@@ -100,8 +100,29 @@ body {
 .mx_AuthBody a, .mx_AuthPicker a { color: #96412b !important; }
 .mx_AuthPage language, .mx_AuthPage select { color: #635849; }
 
-/* rodapé do welcome sem link externos de element */
-.mx_WelcomePage_footer a[href*="element.io"],
-.mx_WelcomePage_footer a[href*="matrix.org"] {
-  display: none !important;
+/* ── welcome (renderizado pelo bundle): logo nossa, sem links element ── */
+.mx_DefaultWelcome_logo img { display: none !important; }
+.mx_DefaultWelcome_logo {
+  display: inline-block !important;
+  width: 64px !important;
+  height: 64px !important;
+  background: url("/icons/conversa.svg") center / contain no-repeat !important;
+}
+a[href="https://element.io/blog"],
+a[href="https://mastodon.matrix.org/@Element"],
+a[href="https://github.com/element-hq/element-web"],
+a[href="https://matrix.org"] { display: none !important; }
+
+/* botões da welcome: terracota com texto creme */
+.cpd-theme-light ._button_1nw83_8 {
+  background-color: #96412b !important;
+  color: #fff8ef !important;
+  border-radius: 12px !important;
+  border: none !important;
+}
+.cpd-theme-light ._button_1nw83_8:hover {
+  background-color: #a9513a !important;
+}
+.cpd-theme-light h1, .cpd-theme-light h2 {
+  color: #352d24 !important;
 }
