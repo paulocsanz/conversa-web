@@ -1,0 +1,9 @@
+{
+  "default_server_config": {
+    "m.homeserver": {
+      "base_url": "https://tuwunel-production-642475dc.up.railway.app",
+      "server_name": "conversa (spike r1)"
+    }
+  },
+  "brand": "Conversa (spike)"
+}
