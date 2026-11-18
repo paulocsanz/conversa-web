@@ -8,7 +8,10 @@
   },
   "brand": "Conversa",
   "branding": {
-    "authHeaderLogoUrl": "icons/conversa.svg"
+    "authHeaderLogoUrl": "https://web-production-59608537.up.railway.app/icons/conversa.svg"
+  },
+  "setting_defaults": {
+    "language": "pt_BR"
   },
   "default_country_code": "BR",
   "disable_custom_urls": true,
