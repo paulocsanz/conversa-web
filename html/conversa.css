@@ -1,0 +1,79 @@
+/* Conversa — tema no modo atelier (paleta cozy do caixote, RFC 0536)
+ * papel quente #f2ece1 · tinta #352d24 · terracota #96412b
+ * tokens semânticos Compound sobrescritos sem @layer → vencem qualquer layer
+ */
+:root {
+  /* superfícies: papel */
+  --cpd-color-theme-bg: #f2ece1;
+  --cpd-color-bg-canvas-default: #f2ece1;
+  --cpd-color-bg-subtle-primary: #e9e1d2;
+  --cpd-color-bg-subtle-secondary: #e9e1d2;
+  --cpd-color-bg-subtle-tertiary: #f8f4ec;
+  --cpd-color-bg-canvas-disabled: #ddd3c0;
+
+  /* tinta */
+  --cpd-color-text-primary: #352d24;
+  --cpd-color-text-secondary: #635849;
+  --cpd-color-text-action-primary: #352d24;
+  --cpd-color-text-on-solid-primary: #fff8ef;
+
+  /* ações: terracota */
+  --cpd-color-bg-action-primary-rest: #96412b;
+  --cpd-color-bg-action-primary-hovered: #a9513a;
+  --cpd-color-bg-action-primary-pressed: #8a3a26;
+  --cpd-color-bg-action-primary-disabled: #ddd3c0;
+  --cpd-color-text-action-accent: #96412b;
+  --cpd-color-bg-accent-subtle: rgb(150 65 43 / 0.1);
+  --cpd-color-border-accent-subtle: rgb(150 65 43 / 0.4);
+
+  /* linhas */
+  --cpd-color-border-interactive-primary: #dcd3c2;
+  --cpd-color-border-interactive-secondary: #c4b49c;
+  --cpd-color-border-interactive-hovered: #b09a7e;
+  --cpd-color-border-interactive-pressed: #96412b;
+
+  /* status (tons AA sobre papel) */
+  --cpd-color-text-info-primary: #355680;
+  --cpd-color-bg-info-subtle: rgb(53 86 128 / 0.12);
+  --cpd-color-text-success-primary: #3b6436;
+  --cpd-color-bg-success-subtle: rgb(59 100 54 / 0.12);
+  --cpd-color-text-warning-primary: #755812;
+  --cpd-color-text-critical-primary: #923324;
+  --cpd-color-bg-critical-primary: #923324;
+  --cpd-color-bg-critical-hovered: #a94433;
+  --cpd-color-bg-critical-subtle: rgb(146 51 36 / 0.12);
+
+  /* shimmer */
+  --cpd-color-gradient-subtle-stop1: rgb(53 45 36 / 0.05);
+  --cpd-color-gradient-subtle-stop2: rgb(53 45 36 / 0.03);
+  --cpd-color-gradient-subtle-stop3: rgb(53 45 36 / 0.02);
+  --cpd-color-gradient-subtle-stop4: rgb(53 45 36 / 0.03);
+  --cpd-color-gradient-subtle-stop5: rgb(53 45 36 / 0.05);
+}
+
+body {
+  background-color: #f2ece1;
+  color: #352d24;
+}
+
+/* sidebar de salas: papel próprio do atelier */
+.mx_LeftPanel,
+.mx_LeftPanel2,
+.mx_RoomList,
+.mx_RoomSublist {
+  background-color: #f8f4ec !important;
+}
+
+/* sombras difusas e cantos generosos nos modais */
+.mx_Dialog, .mx_Dialog_fixedWidth { border-radius: 16px; }
+.mx_ModalDialog { background-color: rgb(40 34 26 / 0.35) !important; }
+
+/* scrollbar discreto, tom papel */
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #dcd3c2; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #635849; }
+
+/* botões primários: cantos generosos */
+.mx_AccessibleButton_kind_primary {
+  border-radius: 12px;
+}

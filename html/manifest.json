@@ -4,8 +4,8 @@
     "description": "Mensageiro E2EE brasileiro: gratuito, federado, mídia efêmera, bairros e negócios locais",
     "lang": "pt-BR",
     "display": "standalone",
-    "theme_color": "#0B8457",
-    "background_color": "#ffffff",
+    "theme_color": "#f2ece1",
+    "background_color": "#f2ece1",
     "start_url": "index.html",
     "icons": [
         {
