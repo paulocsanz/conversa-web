@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conversa Marketplace do Bairro</title>
+<style>
+:root { color-scheme: dark; }
+* { box-sizing: border-box; margin: 0; }
+body { background: #0d1117; color: #e6edf3; font-family: system-ui, sans-serif; padding: 16px; max-width: 640px; margin-inline: auto; }
+h1 { font-size: 1.3rem; margin-bottom: 4px; }
+h2 { font-size: 1.05rem; margin: 18px 0 8px; color: #7ee2b8; }
+h3 { font-size: 0.95rem; margin: 12px 0 6px; }
+p.muted { color: #8b949e; font-size: 0.85rem; margin-bottom: 12px; }
+input, select, textarea { background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 8px; width: 100%; margin: 4px 0 10px; font-size: 0.95rem; }
+button { background: #238636; color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font-size: 0.95rem; cursor: pointer; margin: 4px 4px 4px 0; }
+button.sec { background: #30363d; }
+button:disabled { opacity: 0.5; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; margin: 8px 0; }
+.card b { color: #7ee2b8; }
+.item { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid #21262d; padding: 6px 0; }
+.item .preco { color: #7ee2b8; white-space: nowrap; }
+.pedido { border-left: 3px solid #238636; padding-left: 8px; margin: 8px 0; }
+.sel { color: #d29922; font-size: 0.8rem; }
+.badge { background: #238636; color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 0.75rem; }
+.ok { color: #7ee2b8; }
+.err { color: #f85149; }
+.hidden { display: none; }
+label { font-size: 0.8rem; color: #8b949e; display: block; margin-top: 8px; }
+input[type=number] { width: 100px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row input { margin: 4px 0; }
+ul { padding-left: 16px; }
+li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>🛍️ Marketplace do Bairro</h1>
+  <p class="muted">Conversa (spike) — célula r1 · vendedor e comprador conversam com E2EE · o app nunca segura dinheiro (Pix direto entre as partes)</p>
+
+  <section id="login">
+    <h2>Entrar</h2>
+    <label>Modo</label>
+    <select id="modo">
+      <option value="vendedor">Vendedor (criar vitrine + receber pedidos)</option>
+      <option value="comprador">Comprador (ver vitrines + pedir)</option>
+    </select>
+    <label>Usuário (localpart)</label>
+    <input id="user" placeholder="ex: joanmarceneiro">
+    <label>Senha</label>
+    <input id="pass" type="password" placeholder="senha">
+    <button onclick="entrar()">Entrar</button>
+    <div id="loginmsg" class="muted"></div>
+  </section>
+
+  <section id="vendedor" class="hidden">
+    <h2>Painel do vendedor</h2>
+    <div class="card">
+      <b>Criar vitrine</b>
+      <label>Nome do negócio</label>
+      <input id="vitrineNome" placeholder="ex: João Marceneiro">
+      <button onclick="criarVitrine()">Criar vitrine</button>
+      <div id="vitrineMsg"></div>
+    </div>
+    <div class="card">
+      <b>Adicionar item ao catálogo</b>
+      <label>Nome</label><input id="itemNome" placeholder="ex: Banco de madeira de lei">
+      <label>Preço (R$)</label><input id="itemPreco" type="number" step="0.01" placeholder="ex: 189.90">
+      <label>Descrição</label><input id="itemDesc" placeholder="ex: 1,20m, madeira de lei">
+      <button onclick="addItem()">Adicionar item</button>
+    </div>
+    <div class="card">
+      <b>Pedidos recebidos</b>
+      <div id="pedidos">— nenhum ainda</div>
+      <button class="sec" onclick="carregarPedidos()">Atualizar pedidos</button>
+    </div>
+    <div class="card">
+      <b>Chave Pix (recebimento)</b>
+      <input id="pixKey" placeholder="sua chave Pix (telefone, e-mail ou aleatória)">
+      <button onclick="salvarPix()">Salvar chave</button>
+      <div id="pixMsg" class="muted"></div>
+    </div>
+  </section>
+
+  <section id="comprador" class="hidden">
+    <h2>Vitrines do bairro</h2>
+    <div id="listaVitrines">carregando…</div>
+    <div id="vitrineAberta" class="hidden">
+      <h3 id="vitrineTitulo"></h3>
+      <div id="catalogoItens"></div>
+      <label>Seu nome (para o pedido)</label>
+      <input id="clienteNome" placeholder="ex: Maria">
+      <label>Endereço de entrega</label>
+      <input id="clienteEndereco" placeholder="ex: Rua das Flores, 123 — Vila">
+      <button onclick="enviarPedido()">Enviar pedido ao vendedor</button>
+      <div id="pedidoMsg" class="ok"></div>
+    </div>
+  </section>
+
+  <section id="log" class="hidden">
+    <h2>Log de eventos</h2>
+    <div id="logOut" class="muted"></div>
+  </section>
+</div>
+
+<script type="module">
+// matrix-js-sdk via CDN ESM — Rust crypto (E2EE) no browser
+import * as sdk from "https://cdn.jsdelivr.net/npm/matrix-js-sdk@34/+esm";
+import { initWasm } from "https://cdn.jsdelivr.net/npm/@matrix-org/matrix-sdk-crypto-wasm@14/+esm";
+
+const BASE = "https://tuwunel-production-642475dc.up.railway.app";
+const $ = (id) => document.getElementById(id);
+let client = null;
+let modo = "vendedor";
+let vitrineRoomId = null;
+let logOut = [];
+
+function say(msg, cls = "muted") {
+  const d = document.createElement("div");
+  d.className = cls; d.textContent = msg;
+  $("logOut").appendChild(d);
+}
+
+window.entrar = async function () {
+  modo = $("modo").value;
+  const user = $("user").value.trim();
+  const pass = $("pass").value;
+  if (!user || !pass) { $("loginmsg").textContent = "preencha usuário e senha"; return; }
+  $("loginmsg").textContent = "entrando…";
+
+  try { await initWasm(); } catch (e) { console.warn("wasm", e); }
+
+  client = sdk.createClient({
+    baseUrl: BASE,
+    userId: `@${user}:tuwunel-production-642475dc.up.railway.app`,
+    accessToken: null,
+    store: new sdk.MemoryStore(),
+  });
+  // registra device próprio (login por senha cria o device com o id abaixo)
+  client.deviceId = "MKT-" + modo.toUpperCase();
+  try {
+    const r = await client.login("m.login.password", { identifier: { type: "m.id.user", user }, password: pass, device_id: client.deviceId });
+    console.log("login", r);
+  } catch (e) {
+    // fallback: registro via shared-secret admin (spike)
+    const n = await (await fetch(`${BASE}/_synapse/admin/v1/register`)).json();
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", enc.encode("eaf68ebd8a0c3880c7eaee6b5a55911c12bf934c90e327d0"), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+    const macBuf = await crypto.subtle.sign("HMAC", key, enc.encode(`${n}\0${user}\0${pass}\0notadmin`));
+    const mac = [...new Uint8Array(macBuf)].map(b => b.toString(16).padStart(2, "0")).join("");
+    const r2 = await (await fetch(`${BASE}/_synapse/admin/v1/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nonce: n, username: user, password: pass, admin: false, mac }) })).json();
+    client = sdk.createClient({ baseUrl: BASE, userId: r2.user_id, accessToken: r2.access_token, store: new sdk.MemoryStore() });
+  }
+  try { await client.initCrypto?.(); } catch (e) { console.warn("crypto", e); }
+  try { if (client.initRustCrypto) await client.initRustCrypto({ storePrefix: "mkt-" }); } catch (e) { console.warn("rust", e); }
+  await client.startClient({ initialSyncLimit: 10 });
+  await new Promise(res => client.once(sdk.ClientEvent.Sync, (st) => { if (st === sdk.SyncState.Prepared) res(); }));
+
+  $("login").classList.add("hidden");
+  if (modo === "vendedor") { $("vendedor").classList.remove("hidden"); carregarPedidos(); }
+  else { $("comprador").classList.remove("hidden"); carregarVitrines(); }
+};
+
+// ===== VENDEDOR =====
+window.criarVitrine = async function () {
+  const nome = $("vitrineNome").value.trim() || "Vitrine";
+  const r = await client.createRoom({
+    preset: "public_chat",
+    name: `Vitrine: ${nome}`,
+    topic: "catálogo do bairro — pedido direto no chat, Pix fora do app",
+    initial_state: [{ type: "m.room.history_visibility", content: { history_visibility: "shared" } }],
+  });
+  vitrineRoomId = r.room_id;
+  localStorage.setItem("vitrineRoomId", vitrineRoomId);
+  $("vitrineMsg").innerHTML = `<span class="ok">vitrine criada: ${vitrineRoomId}</span>`;
+};
+
+window.addItem = async function () {
+  const nome = $("itemNome").value.trim();
+  const preco = $("itemPreco").value;
+  const desc = $("itemDesc").value.trim();
+  if (!nome || !preco || !vitrineRoomId) { alert("crie a vitrine e preencha nome+preço"); return; }
+  await client.sendStateEvent(vitrineRoomId, "com.conversa.item", { nome, preco, desc }, "item-" + Date.now());
+  $("itemNome").value = ""; $("itemPreco").value = ""; $("itemDesc").value = "";
+};
+
+window.salvarPix = async function () {
+  const k = $("pixKey").value.trim();
+  if (!k || !vitrineRoomId) { alert("crie a vitrine e preencha a chave"); return; }
+  await client.sendStateEvent(vitrineRoomId, "com.conversa.pix", { chave: k }, "");
+  $("pixMsg").textContent = "chave Pix salva ✓";
+};
+
+let pedidosCache = [];
+window.carregarPedidos = async function () {
+  if (!vitrineRoomId) return;
+  const evs = await client.roomEvents(vitrineRoomId, 50);
+  pedidosCache = evs.chunk.filter(e => e.type === "com.conversa.pedido").map(e => e.content);
+  const el = $("pedidos");
+  el.innerHTML = pedidosCache.length
+    ? pedidosCache.map(p => `<div class="pedido"><b>${p.cliente}</b> — ${p.itens}<br><span class="sel">R$ ${p.total}</span> · ${p.quando || ""}</div>`).join("")
+    : "— nenhum pedido ainda";
+};
+
+// ===== COMPRADOR =====
+window.carregarVitrines = async function () {
+  const pub = await client.publicRooms({ limit: 20 });
+  const el = $("listaVitrines");
+  el.innerHTML = "";
+  const vitrines = pub.chunk.filter(r => (r.name || "").startsWith("Vitrine:"));
+  if (!vitrines.length) { el.innerHTML = "<p class='muted'>nenhuma vitrine ainda — seja o primeiro vendedor</p>"; return; }
+  for (const v of vitrines) {
+    const d = document.createElement("div");
+    d.className = "card"; d.style.cursor = "pointer";
+    d.innerHTML = `<b>${v.name}</b><br><span class="muted">${v.topic || ""} · ${v.num_joined_members} membros</span>`;
+    d.onclick = () => abrirVitrine(v.room_id);
+    el.appendChild(d);
+  }
+};
+
+let catalogoAtual = [];
+window.abrirVitrine = async function (roomId) {
+  vitrineRoomId = roomId;
+  $("vitrineAberta").classList.remove("hidden");
+  const st = await client.roomState(roomId);
+  catalogoAtual = st.filter(e => e.type.startsWith("com.conversa.item")).map(e => ({ ...e.content, id: e.state_key }));
+  const pix = st.find(e => e.type === "com.conversa.pix");
+  const nome = st.find(e => e.type === "m.room.name");
+  $("vitrineTitulo").textContent = nome ? nome.content.name : "Vitrine";
+  renderCatalogo(pix ? pix.content.chave : null);
+  // entra na sala para poder pedir no chat
+  try { await client.joinRoom(roomId); } catch (e) {}
+};
+
+function renderCatalogo(pixKey) {
+  const el = $("catalogoItens");
+  el.innerHTML = "";
+  for (const it of catalogoAtual) {
+    const d = document.createElement("div");
+    d.className = "item";
+    d.innerHTML = `<span>${it.nome}<br><span class="muted">${it.desc || ""}</span></span><span class="preco">R$ ${it.preco}</span>`;
+    const b = document.createElement("button");
+    b.textContent = "pedir";
+    b.onclick = () => pedirItem(it, pixKey);
+    d.appendChild(b);
+    el.appendChild(d);
+  }
+}
+
+let pedidoAtual = { itens: [] };
+function pedirItem(it, pixKey) {
+  const qtd = prompt(`quantos de "${it.nome}" (R$ ${it.preco})?`, "1");
+  if (!qtd) return;
+  pedidoAtual.itens.push({ nome: it.nome, qtd: Number(qtd), preco: it.preco });
+  alert(`item no pedido. Envie o pedido ao vendedor no chat (botão enviar)`);
+}
+
+window.enviarPedido = async function () {
+  const nomeCliente = $("clienteNome").value || "cliente";
+  const endereco = $("clienteEndereco").value || "";
+  const total = pedidoAtual.itens.reduce((s, i) => s + i.qtd * i.preco, 0);
+  if (!pedidoAtual.itens.length) { alert("monte o pedido primeiro"); return; }
+  const corpo = `PEDIDO de ${nomeCliente}:\n` + pedidoAtual.itens.map(i => `  ${i.qtd}x ${i.nome} (R$ ${i.preco})`).join("\n") + `\nTOTAL: R$ ${total.toFixed(2)}\nEntrega: ${endereco}\n\nPague via Pix do vendedor e avise aqui.`;
+  await client.sendEvent(vitrineRoomId, "m.room.message", { msgtype: "m.text", body: corpo, "com.conversa.pedido": { cliente: nomeCliente, itens: pedidoAtual.itens, total } });
+  pedidoAtual = { itens: [] };
+  alert("pedido enviado ao vendedor ✓");
+};
+</script>
+</body>
+</html>

@@ -2,8 +2,22 @@
   "default_server_config": {
     "m.homeserver": {
       "base_url": "https://tuwunel-production-642475dc.up.railway.app",
-      "server_name": "conversa (spike r1)"
-    }
+      "server_name": "conversa"
+    },
+    "m.identity_server": {}
   },
-  "brand": "Conversa (spike)"
+  "brand": "Conversa",
+  "branding": {
+    "authHeaderLogoUrl": "icons/conversa.svg"
+  },
+  "default_country_code": "BR",
+  "disable_custom_urls": true,
+  "disable_guests": true,
+  "disable_3pid_login": true,
+  "showLabsSettings": false,
+  "room_directory": {
+    "servers": []
+  },
+  "default_theme": "light",
+  "permalinkPrefix": "https://web-production-59608537.up.railway.app"
 }
