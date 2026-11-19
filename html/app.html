@@ -258,7 +258,51 @@ async function iniciar() {
              souMembro: minhasSalas.has(r.room_id), amigos: [] };
   });
   for (const c of comunidades) if (c.souMembro) await contarAmigos(c);
+
+  // o-9bd5ad: parede de chaves sem surpresa — detecta secret storage ausente e orienta em PT-BR
+  try {
+    await api(`/_matrix/client/v3/user/${encodeURIComponent(meuUserId)}/account_data/m.secret_storage.default_key`);
+  } catch (e) {
+    const banner = document.createElement("div");
+    banner.className = "card";
+    banner.innerHTML = `🔐 <b>Configure sua recuperação</b> (1 minuto): protege suas conversas para quando trocar de aparelho ou perder o acesso.
+      <button class="sec" onclick="abrirChat('#/user/settings/security')">Abrir configuração de segurança →</button>
+      <div class="muted">A frase que o app gerar é a SUA chave — guarde num lugar seguro. Você só precisa dela se perder o acesso.</div>`;
+    $("viz").prepend(banner);
+  }
+
   renderGrafo(); renderLista(); renderFeed(); renderLugares();
+  monitorNotificacoes();
+}
+
+// o-b0fd57 P0-1: notificação local quando mensagem chega e você não está olhando
+let notifSince = null, notifPrimeiroCiclo = true;
+async function monitorNotificacoes() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") Notification.requestPermission();
+  while (accessToken) {
+    await new Promise(r => setTimeout(r, 10000));
+    const usuarioOLhando = document.visibilityState === "visible" && $("chat").style.display === "block";
+    try {
+      const params = new URLSearchParams({ timeout: "0", limit: "10" });
+      if (notifSince) params.set("since", notifSince);
+      const d = await api("/_matrix/client/v3/sync?" + params.toString());
+      notifSince = d.next_batch;
+      if (notifPrimeiroCiclo) { notifPrimeiroCiclo = false; continue; } // 1º ciclo só coleta posição
+      if (usuarioOLhando) continue;
+      for (const [rid, sala] of Object.entries(d.rooms?.join || {})) {
+        const c = comunidades.find(x => x.room_id === rid);
+        for (const ev of (sala.timeline?.events || [])) {
+          if (ev.type === "m.room.message" && ev.content?.body && Notification.permission === "granted") {
+            new Notification("💬 " + (c ? c.nome : "Conversa"), {
+              body: String(ev.content.body).slice(0, 120),
+              icon: "/icons/conversa.svg", tag: ev.event_id,
+            });
+          }
+        }
+      }
+    } catch (e) { await new Promise(r => setTimeout(r, 5000)); }
+  }
 }
 
 async function contarAmigos(c) {
