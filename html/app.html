@@ -12,44 +12,46 @@ html, body { height: 100%; }
 body {
   background: #f2ece1; color: #352d24;
   font-family: system-ui, -apple-system, sans-serif;
-  display: flex; flex-direction: column; overflow: hidden;
+  display: flex; overflow: hidden;
 }
-#barra {
-  display: flex; align-items: center; gap: 6px; padding: 6px 10px;
-  background: #f8f4ec; border-bottom: 1px solid #dcd3c2;
+#rail {
+  width: 272px; flex: none; display: flex; flex-direction: column;
+  background: #f8f4ec; border-right: 1px solid #dcd3c2; overflow-y: auto;
 }
-#barra img { width: 26px; height: 26px; }
-#barra .aba {
-  border: 1px solid #dcd3c2; background: #ffffff; color: #352d24;
-  border-radius: 999px; padding: 5px 14px; font-size: 0.9rem; cursor: pointer; font-weight: 600;
+#rail .marca { display: flex; align-items: center; gap: 8px; padding: 14px 14px 10px; }
+#rail .marca img { width: 28px; height: 28px; }
+#rail .marca b { font-size: 1.05rem; letter-spacing: -0.3px; }
+#rail .secao {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px;
+  color: #635849; opacity: 0.75; padding: 14px 14px 6px;
 }
-#barra .aba.ativa { background: #96412b; color: #fff8ef; border-color: #96412b; }
-#barra .espaco { flex: 1; }
-#barra .eu { font-size: 0.8rem; color: #635849; margin-right: 6px; }
-#conteudo { flex: 1; position: relative; }
-#chat { position: absolute; inset: 0; border: 0; width: 100%; height: 100%; display: none; }
-#viz { position: absolute; inset: 0; display: none; overflow-y: auto; padding: 14px; max-width: 860px; margin-inline: auto; }
-#viz h2 { font-size: 1.15rem; font-weight: 700; margin: 26px 0 10px; }
-#viz .heroi { padding: 18px 0 6px; }
-#viz .heroi h1 { font-size: 1.5rem; font-weight: 750; letter-spacing: -0.5px; }
-.av-comunidade {
-  width: 38px; height: 38px; border-radius: 12px; flex: none;
+#rail .item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  margin: 1px 8px; border-radius: 10px; cursor: pointer; border: 1px solid transparent;
+}
+#rail .item:hover { background: rgb(150 65 43 / 0.07); }
+#rail .item.ativo { background: #ffffff; border-color: #dcd3c2; box-shadow: 0 1px 2px rgb(53 45 36 / 0.08); }
+#rail .item .av {
+  width: 34px; height: 34px; border-radius: 10px; flex: none;
   display: flex; align-items: center; justify-content: center;
-  color: #fff8ef; font-weight: 700; font-size: 1.05rem;
+  color: #fff8ef; font-weight: 700; font-size: 0.95rem;
 }
-.cabeca { display: flex; gap: 12px; align-items: center; }
-.linha-feed {
-  display: flex; gap: 12px; align-items: flex-start;
-  padding: 10px 2px; border-bottom: 1px solid #f2ece1;
+#rail .item .tx { min-width: 0; }
+#rail .item .tx b { display: block; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#rail .item .tx span { font-size: 0.75rem; color: #635849; }
+#rail .acao {
+  margin: 8px 8px 4px; padding: 8px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px dashed #b09a7e; color: #96412b; font-size: 0.88rem; font-weight: 600;
+  background: rgb(150 65 43 / 0.06);
 }
-.ponto { width: 9px; height: 9px; border-radius: 50%; flex: none; margin-top: 6px; }
-.linha-feed .quando { color: #635849; font-size: 0.78rem; white-space: nowrap; }
-.banner-rec {
-  background: rgb(117 88 18 / 0.08); border: 1px solid rgb(117 88 18 / 0.35);
-  border-radius: 14px; padding: 12px 14px; margin: 10px 0;
-  display: flex; gap: 10px; align-items: center; justify-content: space-between;
-}
-.banner-rec button { background: none; border: 0; color: #635849; font-size: 1rem; cursor: pointer; padding: 2px 6px; }
+#rail .acao:hover { background: rgb(150 65 43 / 0.12); }
+#rail .rodape { margin-top: auto; padding: 12px 14px; font-size: 0.78rem; color: #635849; border-top: 1px solid #dcd3c2; }
+#principal { flex: 1; position: relative; background: #ffffff; }
+#chat { position: absolute; inset: 0; border: 0; width: 100%; height: 100%; display: none; }
+#descobrir { position: absolute; inset: 0; display: none; overflow-y: auto; padding: 22px 26px; }
+#descobrir .miolo { max-width: 780px; margin-inline: auto; }
+#descobrir h1 { font-size: 1.5rem; font-weight: 750; letter-spacing: -0.4px; margin-bottom: 4px; }
+#descobrir h2 { font-size: 1.05rem; font-weight: 700; margin: 24px 0 10px; }
 .card {
   background: #ffffff; border: 1px solid #dcd3c2; border-radius: 16px;
   padding: 14px; margin: 10px 0;
@@ -57,6 +59,7 @@ body {
 }
 .chip { display: inline-block; background: #f2ece1; border: 1px solid #dcd3c2; border-radius: 999px; padding: 2px 10px; font-size: 0.75rem; margin: 2px 4px 2px 0; color: #635849; }
 .chip.accent { background: rgb(150 65 43 / 0.1); border-color: rgb(150 65 43 / 0.4); color: #96412b; }
+.chip.social { background: rgb(59 100 54 / 0.1); border-color: rgb(59 100 54 / 0.4); color: #3b6436; }
 .update { border-left: 3px solid #dcd3c2; padding: 4px 0 4px 10px; margin: 6px 0; font-size: 0.88rem; color: #635849; }
 .update b { color: #352d24; }
 .amigos { color: #3b6436; font-size: 0.85rem; }
@@ -74,76 +77,89 @@ label { font-size: 0.8rem; color: #635849; display: block; margin-top: 8px; }
 .lugar { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f2ece1; font-size: 0.92rem; }
 .lugar .dist { color: #96412b; white-space: nowrap; }
 a { color: #96412b; }
-#esperando { position: fixed; bottom: 12px; right: 12px; max-width: 360px; margin: 0; z-index: 50; }
+.av-comunidade {
+  width: 34px; height: 34px; border-radius: 10px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff8ef; font-weight: 700; font-size: 0.95rem;
+}
+.cabeca { display: flex; gap: 12px; align-items: center; }
+.banner-rec {
+  background: rgb(117 88 18 / 0.08); border: 1px solid rgb(117 88 18 / 0.35);
+  border-radius: 14px; padding: 12px 14px; margin: 10px 0;
+  display: flex; gap: 10px; align-items: center; justify-content: space-between;
+}
+.banner-rec button { background: none; border: 0; color: #635849; font-size: 1rem; cursor: pointer; padding: 2px 6px; }
+#esperando { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); max-width: 460px; z-index: 40; }
 </style>
 </head>
 <body>
-<div id="barra">
-  <img src="/icons/conversa.svg" alt="">
-  <button class="aba" id="abaChat">💬 Conversas</button>
-  <button class="aba" id="abaViz">🏘️ Comunidades</button>
-  <span class="espaco"></span>
-  <span class="eu" id="eu"></span>
-</div>
+<nav id="rail">
+  <div class="marca"><img src="/icons/conversa.svg" alt=""><b>Conversa</b></div>
+  <div class="secao">Minhas comunidades</div>
+  <div id="railComunidades"><div class="item"><span class="muted">…</span></div></div>
+  <div class="secao">Conversas diretas</div>
+  <div id="railDiretas"><div class="item"><span class="muted">…</span></div></div>
+  <div class="acao" onclick="mostrar('descobrir')">🔎 Descobrir comunidades</div>
+  <div class="rodape" id="eu"></div>
+</nav>
 
-<div id="conteudo">
-  <!-- o chat é a fonte da verdade da sessão: nunca criamos nem injetamos sessão -->
+<main id="principal">
+  <!-- o chat é a fonte da verdade da sessão: o painel nunca cria nem injeta sessão -->
   <iframe id="chat" src="index.html" title="Conversa — chat"></iframe>
-  <div id="viz">
-    <div class="heroi">
-      <h1>Comunidades</h1>
-      <p class="muted">O que rola perto de você e em qualquer canto da rede — local, federado ou global.</p>
-    </div>
-    <div class="card">
-      <b>Comunidades</b>
-      <p class="muted">Locais do seu bairro, de outras células (federadas) e globais — na mesma lista.
-      Bairro é só um filtro opcional, não uma grade.</p>
-      <div class="row">
-        <div><label>Filtro por bairro (opcional)</label><select id="bairro"></select></div>
-        <div style="flex:0"><label>&nbsp;</label><button class="sec" onclick="usarLocalizacao()">📍 base física perto de mim</button></div>
+
+  <div id="descobrir">
+    <div class="miolo">
+      <h1>Descobrir comunidades</h1>
+      <p class="muted">Públicas da rede, de outras células (federadas) e globais — abertas a qualquer um,
+      ou chegando por amigos de amigos. Bairro é um filtro opcional, não uma grade.</p>
+      <div class="card">
+        <div class="row">
+          <div><label>Filtro por bairro (opcional)</label><select id="bairro"></select></div>
+          <div style="flex:0"><label>&nbsp;</label><button class="sec" onclick="usarLocalizacao()">📍 base física perto de mim</button></div>
+        </div>
+        <div class="muted">A localização é lida uma vez, só no seu aparelho. Nada é enviado.</div>
       </div>
-      <div class="muted">A localização é lida uma vez, só no seu aparelho. Nada é enviado.</div>
-    </div>
-    <h2>O que está acontecendo</h2>
-    <div id="feed">carregando…</div>
-    <h2>Comunidades</h2>
-    <div class="card">
-      <svg id="grafo" width="100%" height="220" viewBox="0 0 720 220" style="display:block"></svg>
-      <p class="muted">Tamanho = gente participando · linha = mesmo bairro · cor = tipo. Clique no nó para abrir a sala no chat.</p>
-    </div>
-    <div id="listaComunidades"></div>
-    <h2>Bases físicas (quando existirem)</h2>
-    <div id="lugares"></div>
-    <h2>Criar comunidade</h2>
-    <div class="card">
-      <label>Nome</label><input id="cNome" placeholder="ex: Cinema na laje">
-      <div class="row">
-        <div><label>Bairro</label><input id="cBairro" placeholder="ex: Santa Teresa"></div>
-        <div><label>Tipo</label><select id="cCat"><option>cultura</option><option>feira</option><option>verde</option><option>esporte</option><option>educação</option><option>rede</option><option>ajuda mútua</option></select></div>
+      <h2>O que está acontecendo</h2>
+      <div id="feed">carregando…</div>
+      <h2>O mapa das comunidades</h2>
+      <div class="card">
+        <svg id="grafo" width="100%" height="220" viewBox="0 0 720 220" style="display:block"></svg>
+        <p class="muted">Tamanho = gente participando · linha = mesmo bairro · cor = tipo. Clique no nó para abrir a sala no chat.</p>
       </div>
-      <label>O que rola (uma linha)</label><input id="cDesc" placeholder="ex: sessão comentada toda última sexta, 19h">
-      <button onclick="criarComunidade()">Criar e publicar na vizinhança</button>
-      <div id="cMsg"></div>
+      <div id="listaComunidades"></div>
+      <h2>Bases físicas (quando existirem)</h2>
+      <div id="lugares"></div>
+      <h2>Criar comunidade</h2>
+      <div class="card">
+        <label>Nome</label><input id="cNome" placeholder="ex: Cinema na laje">
+        <div class="row">
+          <div><label>Bairro</label><input id="cBairro" placeholder="ex: Santa Teresa"></div>
+          <div><label>Tipo</label><select id="cCat"><option>cultura</option><option>feira</option><option>verde</option><option>esporte</option><option>educação</option><option>rede</option><option>ajuda mútua</option></select></div>
+        </div>
+        <label>O que rola (uma linha)</label><input id="cDesc" placeholder="ex: sessão comentada toda última sexta, 19h">
+        <button onclick="criarComunidade()">Criar e publicar</button>
+        <div id="cMsg"></div>
+      </div>
     </div>
   </div>
-</div>
 
-<div id="esperando" class="card" style="display:none">
-  <b>Entre no chat abaixo 👇</b>
-  <p class="muted">Um login só — quando você entrar no chat, a aba Comunidades ativa sozinha.</p>
-  <div id="msg" class="muted"></div>
-</div>
+  <div id="esperando" class="card">
+    <b>Entre no chat aí embaixo 👇</b>
+    <p class="muted">Um login só — quando você entrar, suas comunidades e a descoberta ativam aqui.</p>
+    <div id="msg" class="muted"></div>
+  </div>
+</main>
 
 <script type="module">
 const BASE_PADRAO = "https://tuwunel-production-642475dc.up.railway.app";
 const $ = (id) => document.getElementById(id);
 let BASE = BASE_PADRAO, accessToken = null, meuUserId = null, minhaPos = null;
-let comunidades = [], parceirosDM = new Set(), minhasSalas = new Set();
+let comunidades = [], diretas = [], parceirosDM = new Set(), minhasSalas = new Set();
+let vistaAtual = "chat";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const FLAG = (n) => new URLSearchParams(location.search).has(n);
 const FLAG_DEDUP = FLAG("flag_viz_feed_dedup");
-const FLAG_DEEPLINK = FLAG("flag_viz_deeplink");
 const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 const LUGARES = [
@@ -157,20 +173,16 @@ const LUGARES = [
 const CATCOR = { cultura: "#96412b", feira: "#755812", verde: "#3b6436", esporte: "#355680", "educação": "#635849", rede: "#8a5a2b", "ajuda mútua": "#3b6436" };
 
 function mostrar(qual) {
+  vistaAtual = qual;
   $("chat").style.display = qual === "chat" ? "block" : "none";
-  $("viz").style.display = qual === "viz" ? "block" : "none";
-  $("abaChat").classList.toggle("ativa", qual === "chat");
-  $("abaViz").classList.toggle("ativa", qual === "viz");
+  $("descobrir").style.display = qual === "descobrir" ? "block" : "none";
 }
-$("abaChat").onclick = () => mostrar("chat");
-$("abaViz").onclick = () => mostrar("viz");
+window.mostrar = mostrar;
 
-// ── sessão: lemos a sessão DO APP (que é a fonte da verdade) — nunca criamos nem injetamos ──
+// ── sessão: o app (iframe) é a fonte da verdade; o painel só lê ──
 async function lerSessaoDoApp() {
-  // 1) algumas versões guardam no localStorage
   let hs = localStorage.getItem("mx_hs_url"), uid = localStorage.getItem("mx_user_id"), tok = localStorage.getItem("mx_access_token");
   if (tok && uid && hs) return { hs, uid, tok };
-  // 2) esta versão guarda no IndexedDB matrix-react-sdk → store account → chaves mx_*
   const db = await new Promise((res) => {
     const r = indexedDB.open("matrix-react-sdk");
     r.onsuccess = () => res(r.result);
@@ -194,7 +206,7 @@ async function lerSessaoDoApp() {
 
 function abrirChat(hash) {
   const f = $("chat");
-  if (f.src.endsWith("about:blank") || !f.src.includes("index.html")) f.src = "index.html" + (hash || "");
+  if (!f.src.includes("index.html")) f.src = "index.html" + (hash || "");
   else if (hash) try { f.contentWindow.location.hash = hash; } catch (e) { f.src = "index.html" + (hash || ""); }
   mostrar("chat");
 }
@@ -217,7 +229,10 @@ async function iniciar() {
     for (const roomId of minhasSalas) {
       const mm = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/joined_members`);
       const ids = (mm.joined || []).map(m => m.user_id);
-      if (ids.length === 2 && ids.includes(meuUserId)) ids.forEach(u => { if (u !== meuUserId) parceirosDM.add(u); });
+      if (ids.length === 2 && ids.includes(meuUserId)) {
+        ids.forEach(u => { if (u !== meuUserId) parceirosDM.add(u); });
+        diretas.push({ room_id: roomId, parceiro: ids.find(u => u !== meuUserId) });
+      }
     }
   } catch (e) { console.warn("sync", e); }
 
@@ -251,10 +266,10 @@ async function iniciar() {
     banner.innerHTML = `<div>🔐 <b>Proteja suas conversas</b> — configure a recuperação (1 min) para não perder nada se trocar de aparelho.
       <a href="#" onclick="abrirChat('#/user/settings/security');return false;">Configurar agora →</a></div>
       <button title="depois" onclick="this.parentElement.remove()">×</button>`;
-    $("viz").prepend(banner);
+    $("descobrir").prepend(banner);
   }
 
-  renderGrafo(); renderLista(); renderFeed(); renderLugares();
+  renderRail(); renderGrafo(); renderLista(); renderFeed(); renderLugares();
   monitorNotificacoes();
 }
 
@@ -264,7 +279,7 @@ async function monitorNotificacoes() {
   if (Notification.permission === "default") Notification.requestPermission();
   while (accessToken) {
     await new Promise(r => setTimeout(r, 10000));
-    const usuarioOLhando = document.visibilityState === "visible" && $("chat").style.display === "block";
+    const usuarioOLhando = document.visibilityState === "visible" && vistaAtual === "chat";
     try {
       const params = new URLSearchParams({ timeout: "0", limit: "10" });
       if (notifSince) params.set("since", notifSince);
@@ -310,12 +325,29 @@ function renderFeed() {
     $("feed").innerHTML = plano.length ? plano.map(({ c, u }) => {
       const corpo = esc(u.texto.replace(/^(📌\s*)?\d{2}\/\d{2}(\s\d{2}:\d{2})?\s—\s?/, ""));
       const cor = CATCOR[c.cat] || "#635849";
-      return `<div class="linha-feed">
+      return `<div class="linha-feed" style="cursor:pointer" onclick="abrirSala('${esc(c.room_id)}')">
         <div class="ponto" style="background:${cor}"></div>
         <div><b>${esc(c.nome)}</b> <span class="quando">· ${u.data}</span><br>${corpo}</div>
       </div>`;
     }).join("") : `<p class="muted">sem atualizações publicadas ainda</p>`;
   });
+}
+
+function renderRail() {
+  const minhas = comunidades.filter(c => c.souMembro);
+  $("railComunidades").innerHTML = minhas.length ? minhas.map(c => `
+    <div class="item" onclick="abrirSala('${esc(c.room_id)}')" title="${esc(c.desc)}">
+      <div class="av" style="background:${CATCOR[c.cat] || "#635849"}">${esc(c.nome[0].toUpperCase())}</div>
+      <div class="tx"><b>${esc(c.nome)}</b><span>${c.membros} pessoas${c.federado ? " · ⛓️ federada" : ""}</span></div>
+    </div>`).join("")
+    : `<div class="item"><span class="muted">entre numa comunidade pela Descoberta</span></div>`;
+  const dmLista = diretas.slice(0, 8);
+  $("railDiretas").innerHTML = dmLista.length ? dmLista.map(d => `
+    <div class="item" onclick="abrirChat('#/room/${encodeURIComponent(d.room_id)}')">
+      <div class="av" style="background:#635849">${esc((d.parceiro.split(":")[0] || "?")[1].toUpperCase())}</div>
+      <div class="tx"><b>${esc(d.parceiro.split(":")[0])}</b><span>conversa direta</span></div>
+    </div>`).join("")
+    : `<div class="item"><span class="muted">suas conversas diretas aparecem aqui</span></div>`;
 }
 
 function renderGrafo() {
@@ -349,16 +381,15 @@ function renderLista() {
           <b style="font-size:1.02rem">${esc(c.nome)}</b>
           <span class="chip accent">${esc(c.bairro)}</span><span class="chip">${esc(c.cat)}</span>
           ${c.federado ? `<span class="chip">⛓️ federada</span>` : ""}
+          <span class="chip">${c.membros} pessoas</span>
+          ${c.amigos?.length ? `<span class="chip social">amigos de amigos: ${c.amigos.length} aqui</span>` : ""}
         </div>
       </div>
-      ${c.federado ? `<span class="chip">⛓️ federada</span>` : ""}
-      <span class="chip">${c.membros} pessoas</span>
-      ${c.amigos?.length ? `<span class="amigos">· ${c.amigos.length} amigo${c.amigos.length > 1 ? "s" : ""} aqui</span>` : ""}
-      <p class="muted" style="margin-top:4px">${esc(c.desc)}</p>
+      <p class="muted" style="margin-top:6px">${esc(c.desc)}</p>
       <div id="ups-${c.room_id.replace(/[^\w]/g, "")}" class="muted">atualizações…</div>
       ${c.souMembro
         ? `<span class="ok">✓ você participa</span> <button class="sec" onclick="abrirSala('${esc(c.room_id)}')">abrir no chat →</button>`
-        : `<button onclick="entrarComunidade('${esc(c.room_id)}')">Participar</button>`}
+        : `${c.amigos?.length ? `<span class="amigos">chegue pelos seus amigos</span> ` : ""}<button onclick="entrarComunidade('${esc(c.room_id)}')">Participar</button>`}
     </div>`).join("");
   ordem.forEach(async c => {
     const ups = await atualizacoes(c);
@@ -367,12 +398,14 @@ function renderLista() {
   });
 }
 
-// a comunidade É uma sala do chat: abrir troca a sala no chat embutido, na hora
+// a comunidade É um grupo de salas do chat: abrir troca a sala no chat embutido
 window.abrirSala = (roomId) => {
   entrarComunidadeSePreciso(roomId).then(() => {
+    mostrar("chat");
     abrirChat("#/room/" + encodeURIComponent(roomId));
   });
 };
+window.abrirChatView = () => mostrar("chat");
 async function entrarComunidadeSePreciso(roomId) {
   if (minhasSalas.has(roomId)) return;
   try {
@@ -380,9 +413,10 @@ async function entrarComunidadeSePreciso(roomId) {
     minhasSalas.add(roomId);
     const c = comunidades.find(x => x.room_id === roomId);
     if (c) { c.souMembro = true; c.membros += 1; await contarAmigos(c); }
+    renderRail();
   } catch (e) { alert("não deu pra entrar: " + e.message); }
 }
-window.entrarComunidade = (roomId) => entrarComunidadeSePreciso(roomId).then(() => { renderGrafo(); renderLista(); abrirSala(roomId); });
+window.entrarComunidade = (roomId) => entrarComunidadeSePreciso(roomId).then(() => { renderGrafo(); renderLista(); renderRail(); abrirSala(roomId); });
 
 function renderLugares() {
   const b = $("bairro").value;
@@ -420,32 +454,27 @@ window.criarComunidade = async () => {
         { type: "m.conversa.comunidade", content: { bairro, categoria: cat, demo: true } },
       ] }) });
     comunidades.push({ room_id: r.room_id, nome, membros: 1, bairro, cat, desc: desc || "comunidade da vizinhança", souMembro: true, amigos: [] });
-    renderGrafo(); renderLista(); renderFeed();
+    renderGrafo(); renderLista(); renderFeed(); renderRail();
     $("cMsg").innerHTML = `<span class="ok">✓ publicada — clique no nó para abrir no chat</span>`;
   } catch (e) { $("cMsg").innerHTML = `<span class="err">falhou: ${e.message}</span>`; }
 };
 
 // ── boot: o app (iframe) é quem manda na sessão; o painel só a acompanha ──
 async function boot() {
+  $("esperando").style.display = "none";
   const ativaCom = (sess) => {
     BASE = sess.hs; accessToken = sess.tok; meuUserId = sess.uid;
-    $("esperando").style.display = "none";
     $("eu").textContent = meuUserId.split(":")[0];
-    iniciar().catch((e) => { $("msg").textContent = "falhou ao carregar comunidades: " + e.message; });
+    iniciar().catch((e) => console.warn("carregar comunidades:", e.message));
   };
-  let sess = await lerSessaoDoApp();
-  if (sess) {
-    ativaCom(sess);
-    mostrar("chat");
-    return;
+  const sess = await lerSessaoDoApp();
+  if (sess) ativaCom(sess);
+  else {
+    const poll = setInterval(async () => {
+      const s = await lerSessaoDoApp();
+      if (s) { clearInterval(poll); ativaCom(s); }
+    }, 2500);
   }
-  // sem sessão: o chat mostra o login nativo dele; o painel ativa sozinho quando entrar
-  $("esperando").style.display = "block";
-  mostrar("chat");
-  const poll = setInterval(async () => {
-    const s = await lerSessaoDoApp();
-    if (s) { clearInterval(poll); ativaCom(s); mostrar("viz"); }
-  }, 2000);
 }
 boot();
 </script>
