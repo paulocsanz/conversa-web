@@ -222,7 +222,7 @@ async function contarAmigos(c) {
 
 async function atualizacoes(c) {
   try {
-    const d = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(c.room_id)}/messages?dir=b&limit=3`);
+    const d = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(c.room_id)}/messages?dir=b&limit=50`);
     return (d.chunk || []).filter(e => e.type === "m.room.message" && e.content?.body).slice(0, 3)
       .map(e => ({ ts: e.origin_server_ts,
                    texto: new Date(e.origin_server_ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " — " + e.content.body }));
