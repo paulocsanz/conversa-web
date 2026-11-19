@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkelement_web=self.webpackChunkelement_web||[]).push([[9341],{"../../node_modules/.pnpm/matrix-js-sdk@https+++codeload.github.com+matrix-org+matrix-js-sdk+tar.gz+969d2f364fbff52d67b478655818af485fe8914d/node_modules/matrix-js-sdk/src/types.ts"(e,s,t){t.d(s,{V:()=>d});let d=function(e){return e.Sas="m.sas.v1",e.ShowQrCode="m.qr_code.show.v1",e.ScanQrCode="m.qr_code.scan.v1",e.Reciprocate="m.reciprocate.v1",e}({})}}]);
+//# sourceMappingURL=9341.js.map
