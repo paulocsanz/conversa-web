@@ -1,23 +1,17 @@
 /* Conversa — tema no modo atelier (paleta cozy do caixote, RFC 0536)
- * papel quente #f2ece1 · tinta #352d24 · terracota #96412b
- * tokens semânticos Compound sobrescritos sem @layer → vencem qualquer layer
- */
+   papel quente #f2ece1 · tinta #352d24 · terracota #96412b
+   tokens Compound + classes de auth do build do fork */
 :root {
-  /* superfícies: papel */
   --cpd-color-theme-bg: #f2ece1;
   --cpd-color-bg-canvas-default: #f2ece1;
   --cpd-color-bg-subtle-primary: #e9e1d2;
   --cpd-color-bg-subtle-secondary: #e9e1d2;
   --cpd-color-bg-subtle-tertiary: #f8f4ec;
   --cpd-color-bg-canvas-disabled: #ddd3c0;
-
-  /* tinta */
   --cpd-color-text-primary: #352d24;
   --cpd-color-text-secondary: #635849;
   --cpd-color-text-action-primary: #352d24;
   --cpd-color-text-on-solid-primary: #fff8ef;
-
-  /* ações: terracota */
   --cpd-color-bg-action-primary-rest: #96412b;
   --cpd-color-bg-action-primary-hovered: #a9513a;
   --cpd-color-bg-action-primary-pressed: #8a3a26;
@@ -25,14 +19,10 @@
   --cpd-color-text-action-accent: #96412b;
   --cpd-color-bg-accent-subtle: rgb(150 65 43 / 0.1);
   --cpd-color-border-accent-subtle: rgb(150 65 43 / 0.4);
-
-  /* linhas */
   --cpd-color-border-interactive-primary: #dcd3c2;
   --cpd-color-border-interactive-secondary: #c4b49c;
   --cpd-color-border-interactive-hovered: #b09a7e;
   --cpd-color-border-interactive-pressed: #96412b;
-
-  /* status (tons AA sobre papel) */
   --cpd-color-text-info-primary: #355680;
   --cpd-color-bg-info-subtle: rgb(53 86 128 / 0.12);
   --cpd-color-text-success-primary: #3b6436;
@@ -42,79 +32,48 @@
   --cpd-color-bg-critical-primary: #923324;
   --cpd-color-bg-critical-hovered: #a94433;
   --cpd-color-bg-critical-subtle: rgb(146 51 36 / 0.12);
-
-  /* shimmer */
   --cpd-color-gradient-subtle-stop1: rgb(53 45 36 / 0.05);
   --cpd-color-gradient-subtle-stop2: rgb(53 45 36 / 0.03);
   --cpd-color-gradient-subtle-stop3: rgb(53 45 36 / 0.02);
   --cpd-color-gradient-subtle-stop4: rgb(53 45 36 / 0.03);
   --cpd-color-gradient-subtle-stop5: rgb(53 45 36 / 0.05);
 }
-
-body {
-  background-color: #f2ece1;
-  color: #352d24;
-}
-
-/* sidebar de salas: papel próprio do atelier */
-.mx_LeftPanel,
-.mx_LeftPanel2,
-.mx_RoomList,
-.mx_RoomSublist {
-  background-color: #f8f4ec !important;
-}
-
-/* sombras difusas e cantos generosos nos modais */
+body { background-color: #f2ece1; color: #352d24; }
+.mx_LeftPanel, .mx_LeftPanel2, .mx_RoomList, .mx_RoomSublist { background-color: #f8f4ec !important; }
 .mx_Dialog, .mx_Dialog_fixedWidth { border-radius: 16px; }
-.mx_ModalDialog { background-color: rgb(40 34 26 / 0.35) !important; }
-
-/* scrollbar discreto, tom papel */
+.mx_AccessibleButton_kind_primary { border-radius: 12px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #dcd3c2; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #635849; }
 
-/* botões primários: cantos generosos */
-.mx_AccessibleButton_kind_primary {
-  border-radius: 12px;
-}
-
-/* ── telas de auth/welcome: papel atelier, sem foto de montanha ── */
-.mx_AuthPage,
-.mx_AuthPage_centered {
+/* ── login: papel atelier, sem foto, sem gradiente alheio ── */
+.mx_AuthPage {
+  background: #f2ece1 !important;
   background-image: none !important;
-  background-color: #f2ece1 !important;
 }
 .mx_AuthPage_modal,
-.mx_AuthCard,
-.mx_AuthBody,
-.mx_AuthPicker {
+.mx_AuthPage_modalBlur {
   background-color: #ffffff !important;
   border: 1px solid #dcd3c2 !important;
   border-radius: 18px !important;
   box-shadow: 0 1px 3px rgb(53 45 36 / 0.06), 0 6px 18px rgb(53 45 36 / 0.08) !important;
+  background-image: none !important;
 }
+.mx_AuthHeader {
+  background: #f2ece1 !important;
+  background-image: none !important;
+}
+.mx_AuthHeaderLogo img, .mx_AuthHeaderLogo svg { max-height: 48px; }
 .mx_AuthBody a, .mx_AuthPicker a { color: #96412b !important; }
+.mx_AuthBody_paddedFooter_title, .mx_AuthBody_paddedFooter_subtitle { color: #635849 !important; }
+.mx_Login_field, .mx_Login_input { border-color: #dcd3c2 !important; }
+.mx_Login_submit, .mx_Login_fullWidthButton {
+  background: #96412b !important; color: #fff8ef !important;
+  border-radius: 12px !important; border: none !important;
+}
+.mx_Login_submit:hover, .mx_Login_fullWidthButton:hover { background: #a9513a !important; }
+.mx_LoginError, .mx_Login_error { color: #923324 !important; }
 
-/* ── welcome (renderizado pelo bundle): logo substituída no arquivo, sem links element ── */
-.mx_DefaultWelcome_logo img {
-  width: 64px !important;
-  height: 64px !important;
-}
-a[href="https://element.io/blog"],
-a[href="https://mastodon.matrix.org/@Element"],
-a[href="https://github.com/element-hq/element-web"],
-a[href="https://matrix.org"] { display: none !important; }
-
-/* botões da welcome: terracota com texto creme */
-.cpd-theme-light ._button_1nw83_8 {
-  background-color: #96412b !important;
-  color: #fff8ef !important;
-  border-radius: 12px !important;
-  border: none !important;
-}
-.cpd-theme-light ._button_1nw83_8:hover {
-  background-color: #a9513a !important;
-}
-.cpd-theme-light h1, .cpd-theme-light h2 {
-  color: #352d24 !important;
-}
+/* welcome: sem foto de montanha, papel */
+.mx_HomePage { background: #f2ece1 !important; }
+.mx_LoginSplashView { background: #f2ece1 !important; }
