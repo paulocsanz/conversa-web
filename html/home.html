@@ -149,6 +149,10 @@ const LUGARES = [
 
 const CATCOR = { cultura: "#96412b", feira: "#755812", verde: "#3b6436", esporte: "#355680", "educação": "#635849", rede: "#8a5a2b", "ajuda mútua": "#3b6436" };
 const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+// flags admin-only (query param, sem UI) — apagar em Done
+const FLAG = (n) => new URLSearchParams(location.search).has(n);
+const FLAG_DEDUP = FLAG("flag_viz_feed_dedup");
+const FLAG_DEEPLINK = FLAG("flag_viz_deeplink");
 
 // login: senha → fallback registro admin (spike)
 window.entrar = async function () {
@@ -225,7 +229,8 @@ async function atualizacoes(c) {
     const d = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(c.room_id)}/messages?dir=b&limit=50`);
     return (d.chunk || []).filter(e => e.type === "m.room.message" && e.content?.body).slice(0, 3)
       .map(e => ({ ts: e.origin_server_ts,
-                   texto: new Date(e.origin_server_ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " — " + e.content.body }));
+                   data: new Date(e.origin_server_ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+                   texto: e.content.body }));
   } catch (e) { return []; }
 }
 
@@ -234,8 +239,10 @@ function renderFeed() {
   Promise.all(comunidades.map(async c => ({ c, ups: await atualizacoes(c) }))).then(todos => {
     const plano = todos.flatMap(({ c, ups }) => ups.map(u => ({ c, u })))
       .sort((a, b) => b.u.ts - a.u.ts).slice(0, 8);
-    f.innerHTML = plano.length ? plano.map(({ c, u }) =>
-      `<div class="update"><b>${c.nome}</b> <span class="chip">${c.bairro}</span><br>${u.texto}</div>`).join("")
+    f.innerHTML = plano.length ? plano.map(({ c, u }) => {
+      const corpo = FLAG_DEDUP ? u.texto.replace(/^(📌\s*)?\d{2}\/\d{2}(\s\d{2}:\d{2})?\s—\s?/, "") : u.texto;
+      return `<div class="update"><b>${c.nome}</b> <span class="chip">${c.bairro}</span><br>${u.data} — ${corpo}</div>`;
+    }).join("")
       : `<p class="muted">sem atualizações publicadas ainda</p>`;
   });
 }
@@ -277,7 +284,9 @@ function renderLista() {
       <p class="muted" style="margin-top:4px">${c.desc}</p>
       <div id="ups-${c.room_id.replace(/[^\w]/g, "")}" class="muted">atualizações…</div>
       ${c.souMembro
-        ? `<span class="ok">✓ você participa — abra no app</span>`
+        ? (FLAG_DEEPLINK
+            ? `<span class="ok">✓ você participa —</span> <a href="/index.html#/room/${encodeURIComponent(c.room_id)}">abra no app →</a>`
+            : `<span class="ok">✓ você participa — abra no app</span>`)
         : `<button onclick="entrarComunidade('${c.room_id}')">Participar</button>`}
     </div>`).join("");
   ordem.forEach(async c => {
