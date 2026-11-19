@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conversa — Vizinhança</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; margin: 0; }
+body {
+  background: #f2ece1; color: #352d24;
+  font-family: system-ui, -apple-system, sans-serif;
+  max-width: 760px; margin-inline: auto; padding: 20px 16px 60px;
+}
+header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+header img { width: 34px; height: 34px; }
+h1 { font-size: 1.3rem; font-weight: 650; }
+.muted { color: #635849; font-size: 0.85rem; }
+h2 { font-size: 1.05rem; margin: 22px 0 8px; border-bottom: 1px solid #dcd3c2; padding-bottom: 6px; }
+h3 { font-size: 0.95rem; margin: 10px 0 6px; }
+input, select, textarea {
+  background: #ffffff; color: #352d24; border: 1px solid #dcd3c2;
+  border-radius: 10px; padding: 8px; width: 100%; margin: 4px 0 10px; font-size: 0.95rem;
+}
+button {
+  background: #96412b; color: #fff8ef; border: 0; border-radius: 12px;
+  padding: 8px 16px; font-size: 0.95rem; cursor: pointer; margin: 4px 6px 4px 0;
+}
+button.sec { background: #e9e1d2; color: #352d24; border: 1px solid #dcd3c2; }
+button:disabled { opacity: 0.5; }
+.card {
+  background: #ffffff; border: 1px solid #dcd3c2; border-radius: 16px;
+  padding: 14px; margin: 10px 0;
+  box-shadow: 0 1px 3px rgb(53 45 36 / 0.06), 0 4px 14px rgb(53 45 36 / 0.05);
+}
+.chip {
+  display: inline-block; background: #f2ece1; border: 1px solid #dcd3c2;
+  border-radius: 999px; padding: 2px 10px; font-size: 0.75rem; margin: 2px 4px 2px 0; color: #635849;
+}
+.chip.accent { background: rgb(150 65 43 / 0.1); border-color: rgb(150 65 43 / 0.4); color: #96412b; }
+.update { border-left: 3px solid #dcd3c2; padding: 4px 0 4px 10px; margin: 6px 0; font-size: 0.88rem; color: #635849; }
+.update b { color: #352d24; }
+.amigos { color: #3b6436; font-size: 0.85rem; }
+.ok { color: #3b6436; }
+.err { color: #923324; }
+label { font-size: 0.8rem; color: #635849; display: block; margin-top: 8px; }
+.row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+.row > div { flex: 1; min-width: 140px; }
+svg text { font-family: system-ui, sans-serif; }
+.lugar { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f2ece1; font-size: 0.92rem; }
+.lugar .dist { color: #96412b; white-space: nowrap; }
+.aviso { background: rgb(117 88 18 / 0.08); border: 1px solid rgb(117 88 18 / 0.3); border-radius: 10px; padding: 8px 10px; font-size: 0.8rem; color: #755812; margin: 8px 0; }
+a { color: #96412b; }
+</style>
+</head>
+<body>
+<header>
+  <img src="/icons/conversa.svg" alt="">
+  <h1>Vizinhança</h1>
+  <span style="flex:1"></span>
+  <a href="/">← abrir o app</a>
+</header>
+<p class="muted">As comunidades da sua região, o que está acontecendo e os espaços físicos ao redor.
+A conversa dentro de cada comunidade continua no app, sempre cifrada. Aqui só aparece o que os
+organizadores escolhem publicar.</p>
+
+<section id="login">
+  <div class="card">
+    <h2 style="margin-top:0;border:0">Entrar</h2>
+    <div class="row">
+      <div><label>Usuário</label><input id="user" placeholder="ex: paulo"></div>
+      <div><label>Senha</label><input id="pass" type="password"></div>
+    </div>
+    <button onclick="entrar()">Entrar na vizinhança</button>
+    <div id="msg" class="muted"></div>
+  </div>
+</section>
+
+<div id="app" style="display:none">
+  <div class="card">
+    <b>Onde você vive?</b>
+    <div class="row">
+      <div>
+        <label>Seu bairro (você declara, ninguém rastreia)</label>
+        <select id="bairro"></select>
+      </div>
+      <div style="flex:0">
+        <label>&nbsp;</label>
+        <button class="sec" onclick="usarLocalizacao()">📍 usar minha localização agora</button>
+      </div>
+    </div>
+    <div id="locMsg" class="muted">A localização é lida uma vez, só no seu aparelho, para ordenar
+    os espaços por distância. Nada é enviado.</div>
+  </div>
+
+  <h2>O que está acontecendo</h2>
+  <div id="feed">carregando…</div>
+
+  <h2>Comunidades</h2>
+  <div class="card">
+    <svg id="grafo" width="100%" height="240" viewBox="0 0 720 240" style="display:block"></svg>
+    <p class="muted">Tamanho = gente participando · linha = mesmo bairro · cor = tipo.
+    Cliques levam ao card da comunidade.</p>
+  </div>
+  <div id="listaComunidades"></div>
+
+  <h2>Espaços físicos ao seu redor</h2>
+  <div class="aviso">Base demo de lugares (spike) — na produção, cada lugar é uma Página da 0014
+  mantida por quem cuida dele.</div>
+  <div id="lugares"></div>
+
+  <h2>Criar comunidade</h2>
+  <div class="card">
+    <label>Nome</label><input id="cNome" placeholder="ex: Cinema na laje">
+    <div class="row">
+      <div><label>Bairro</label><input id="cBairro" placeholder="ex: Santa Teresa"></div>
+      <div><label>Tipo</label>
+        <select id="cCat">
+          <option>cultura</option><option>feira</option><option>verde</option>
+          <option>esporte</option><option>educação</option><option>rede</option><option>ajuda mútua</option>
+        </select>
+      </div>
+    </div>
+    <label>O que rola (uma linha)</label>
+    <input id="cDesc" placeholder="ex: sessão comentada toda última sexta, 19h">
+    <button onclick="criarComunidade()">Criar e publicar na vizinhança</button>
+    <div id="cMsg"></div>
+  </div>
+</div>
+
+<script type="module">
+import * as sdk from "https://cdn.jsdelivr.net/npm/matrix-js-sdk@34/+esm";
+import { initWasm } from "https://cdn.jsdelivr.net/npm/@matrix-org/matrix-sdk-crypto-wasm@14/+esm";
+
+const BASE = "https://tuwunel-production-642475dc.up.railway.app";
+const SERVER = "tuwunel-production-642475dc.up.railway.app";
+const SECRET = "eaf68ebd8a0c3880c7eaee6b5a55911c12bf934c90e327d0";
+const $ = (id) => document.getElementById(id);
+let client = null, accessToken = null, minhaPos = null, comunidades = [], parceirosDM = new Set();
+
+// lugares-demo (spike; na produção viram Páginas da 0014)
+const LUGARES = [
+  { nome: "Largo dos Guimarães", tipo: "praça — o coração de Santa", bairro: "Santa Teresa", lat: -22.9259, lng: -43.1867 },
+  { nome: "Praça São Sebastião", tipo: "praça — quiosque, playground e vista", bairro: "Santa Teresa", lat: -22.9313, lng: -43.1901 },
+  { nome: "Cinelândia", tipo: "praça — cinema, livro e ato", bairro: "Centro", lat: -22.9286, lng: -43.1745 },
+  { nome: "Feira de rua do Botafogo", tipo: "feira — sábados, 8h às 13h", bairro: "Botafogo", lat: -22.9503, lng: -43.1855 },
+  { nome: "Quadra da Associação", tipo: "quadra — reservável pelo chat", bairro: "Copacabana", lat: -22.9710, lng: -43.1830 },
+  { nome: "Biblioteca do bairro", tipo: "biblioteca — sala do reforço", bairro: "Centro", lat: -22.9188, lng: -43.1761 },
+];
+
+const CATCOR = { cultura: "#96412b", feira: "#755812", verde: "#3b6436", esporte: "#355680", "educação": "#635849", rede: "#8a5a2b", "ajuda mútua": "#3b6436" };
+const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+// login (mesma mecânica do marketplace: senha → fallback registro admin)
+window.entrar = async function () {
+  const user = $("user").value.trim(), pass = $("pass").value;
+  if (!user || !pass) { $("msg").textContent = "preencha usuário e senha"; return; }
+  $("msg").textContent = "entrando…";
+  try { await initWasm(); } catch (e) {}
+  client = sdk.createClient({ baseUrl: BASE, userId: `@${user}:${SERVER}`, accessToken: null, store: new sdk.MemoryStore() });
+  client.deviceId = "VIZ-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+  let userId = `@${user}:${SERVER}`;
+  try {
+    const r = await client.login("m.login.password", { identifier: { type: "m.id.user", user }, password: pass, device_id: client.deviceId });
+    accessToken = r.access_token; userId = r.user_id;
+  } catch (e) {
+    const n = await (await fetch(`${BASE}/_synapse/admin/v1/register`)).json();
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", enc.encode(SECRET), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+    const macBuf = await crypto.subtle.sign("HMAC", key, enc.encode(`${n}\0${user}\0${pass}\0notadmin`));
+    const mac = [...new Uint8Array(macBuf)].map(b => b.toString(16).padStart(2, "0")).join("");
+    const r2 = await (await fetch(`${BASE}/_synapse/admin/v1/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nonce: n, username: user, password: pass, admin: false, mac }) })).json();
+    if (!r2.access_token) { $("msg").textContent = "login falhou: " + (r2.errcode || e.message || "?"); return; }
+    accessToken = r2.access_token; userId = r2.user_id;
+    client = sdk.createClient({ baseUrl: BASE, userId, accessToken, store: new sdk.MemoryStore() });
+  }
+  localStorage.setItem("viz_user", user); localStorage.setItem("viz_pass", pass);
+  $("msg").textContent = "";
+  $("login").style.display = "none"; $("app").style.display = "";
+  await carregarTudo(userId);
+};
+
+async function api(path, opts = {}) {
+  const r = await fetch(BASE + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: `Bearer ${accessToken}` } });
+  if (!r.ok) throw new Error(`${path}: ${r.status}`);
+  return r.json();
+}
+
+async function carregarTudo(userId) {
+  // 1) bairros conhecidos no select
+  const bairros = [...new Set(LUGARES.map(l => l.bairro))].sort();
+  $("bairro").innerHTML = `<option value="">— escolha seu bairro —</option>` + bairros.map(b => `<option>${b}</option>`).join("");
+  const bSalvo = localStorage.getItem("viz_bairro"); if (bSalvo) $("bairro").value = bSalvo;
+  $("bairro").onchange = () => { localStorage.setItem("viz_bairro", $("bairro").value); renderLugares(); };
+
+  // 2) comunidades do diretório público
+  const d = await api("/_matrix/client/v3/publicRooms", { method: "POST", body: JSON.stringify({ limit: 50 }) });
+  comunidades = (d.chunk || []).filter(r => (r.topic || "").includes("bairro:")).map(r => {
+    const m = (r.topic || "").match(/bairro:([^·]+) · cat:([^·]+) · ?(.*)/);
+    return {
+      room_id: r.room_id, nome: r.name, alias: r.canonical_alias,
+      membros: r.num_joined_members,
+      bairro: m ? m[1].trim() : "?", cat: m ? m[2].trim() : "?", desc: m ? m[3].trim() : "",
+      souMembro: false, amigos: null,
+    };
+  });
+
+  // 3) sync: quem são os meus contatos (parceiros de DM) — só no meu aparelho
+  await client.startClient({ initialSyncLimit: 1 });
+  await new Promise(res => client.once(sdk.ClientEvent.Sync, st => { if (st === sdk.SyncState.Prepared) res(); }));
+  for (const room of client.getRooms()) {
+    const membros = room.getJoinedMembers().map(m => m.userId);
+    if (membros.length === 2 && membros.includes(userId)) membros.forEach(u => { if (u !== userId) parceirosDM.add(u); });
+  }
+  // salas que já participo
+  for (const c of comunidades) if (client.getRoom(c.room_id)) { c.souMembro = true; await contarAmigos(c); }
+
+  renderGrafo(); renderLista(); renderFeed(); renderLugares();
+}
+
+async function contarAmigos(c) {
+  try {
+    const room = client.getRoom(c.room_id);
+    if (!room) return;
+    const membros = room.getJoinedMembers().map(m => m.userId);
+    c.amigos = membros.filter(u => parceirosDM.has(u));
+    if (!c.souMembro && c.amigos.length) c.souMembro = client.getRoom(c.room_id)?.getMyMembership?.() === "join";
+  } catch (e) {}
+}
+
+async function atualizacoes(c) {
+  try {
+    const d = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(c.room_id)}/messages?dir=b&limit=3`);
+    return (d.chunk || []).filter(e => e.type === "m.room.message" && e.content?.body).slice(0, 3)
+      .map(e => new Date(e.origin_server_ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " — " + e.content.body);
+  } catch (e) { return []; }
+}
+
+function renderFeed() {
+  const f = $("feed"); f.textContent = "carregando…";
+  Promise.all(comunidades.map(async c => ({ c, ups: await atualizacoes(c) }))).then(todos => {
+    const plano = todos.flatMap(({ c, ups }) => ups.map(u => ({ c, u }))).sort((a, b) => 0).slice(0, 8);
+    f.innerHTML = plano.length ? plano.map(({ c, u }) =>
+      `<div class="update"><b>${c.nome}</b> <span class="chip">${c.bairro}</span><br>${u}</div>`).join("")
+      : `<p class="muted">sem atualizações publicadas ainda</p>`;
+  });
+}
+
+function renderGrafo() {
+  const svg = $("grafo"); const n = comunidades.length;
+  if (!n) { svg.innerHTML = `<text x="300" y="120" fill="#635849">nenhuma comunidade publicada ainda</text>`; return; }
+  const cx = 360, cy = 120, R = 88;
+  const pos = comunidades.map((c, i) => {
+    const ang = (i / n) * 2 * Math.PI - Math.PI / 2;
+    return { ...c, x: cx + R * Math.cos(ang), y: cy + R * Math.sin(ang) };
+  });
+  let g = "";
+  // arestas: mesmo bairro
+  for (let i = 0; i < pos.length; i++) for (let j = i + 1; j < pos.length; j++)
+    if (pos[i].bairro === pos[j].bairro)
+      g += `<line x1="${pos[i].x}" y1="${pos[i].y}" x2="${pos[j].x}" y2="${pos[j].y}" stroke="#dcd3c2" stroke-width="1.5"/>`;
+  for (const p of pos) {
+    const r = 7 + Math.min(18, p.membros * 1.1);
+    const cor = CATCOR[p.cat] || "#635849";
+    g += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${cor}" fill-opacity="0.85" stroke="#f2ece1" stroke-width="2" style="cursor:pointer" onclick="abrirCard('${p.room_id}')"><title>${p.nome} — ${p.membros} pessoas</title></circle>`;
+    g += `<text x="${p.x}" y="${p.y + r + 12}" text-anchor="middle" font-size="10" fill="#352d24">${p.bairro}</text>`;
+  }
+  svg.innerHTML = g;
+}
+
+function renderLista() {
+  const ordem = [...comunidades].sort((a, b) => {
+    const mb = $("bairro").value;
+    const pa = (a.bairro === mb ? 0 : 1) - (a.bairro === mb ? 0 : 1);
+    return (a.bairro === mb ? 0 : 1) - (b.bairro === mb ? 0 : 1) || b.membros - a.membros;
+  });
+  $("listaComunidades").innerHTML = ordem.map(c => `
+    <div class="card" id="card-${c.room_id.replace(/[^\w]/g, "")}">
+      <b>${c.nome}</b>
+      <span class="chip accent">${c.bairro}</span><span class="chip">${c.cat}</span>
+      <span class="chip">${c.membros} pessoas</span>
+      ${c.amigos?.length ? `<span class="amigos">· ${c.amigos.length} amigo${c.amigos.length > 1 ? "s" : ""} aqui</span>` : ""}
+      <p class="muted" style="margin-top:4px">${c.desc}</p>
+      <div id="ups-${c.room_id.replace(/[^\w]/g, "")}" class="muted">atualizações…</div>
+      ${c.souMembro
+        ? `<span class="ok">✓ você participa — abra no app</span>`
+        : `<button onclick="entrarComunidade('${c.room_id}')">Participar</button>`}
+    </div>`).join("");
+  ordem.forEach(async c => {
+    const ups = await atualizacoes(c);
+    const el = $("ups-" + c.room_id.replace(/[^\w]/g, ""));
+    if (el) el.innerHTML = ups.map(u => `<div class="update">${u}</div>`).join("") || `<div class="update">sem updates</div>`;
+  });
+}
+
+window.abrirCard = (roomId) => {
+  const el = $("card-" + roomId.replace(/[^\w]/g, ""));
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+};
+
+window.entrarComunidade = async (roomId) => {
+  try {
+    await client.joinRoom(roomId);
+    const c = comunidades.find(x => x.room_id === roomId);
+    if (c) { c.souMembro = true; await contarAmigos(c); }
+    renderLista();
+  } catch (e) { alert("não deu pra entrar: " + e.message); }
+};
+
+function renderLugares() {
+  const b = $("bairro").value;
+  const lista = [...LUGARES].map(l => ({ ...l, d: minhaPos ? haversine(minhaPos, l) : null }))
+    .sort((a, b2) => {
+      if (a.d != null && b2.d != null) return a.d - b2.d;
+      return (a.bairro === b ? 0 : 1) - (b2.bairro === b ? 0 : 1);
+    });
+  $("lugares").innerHTML = lista.map(l => `
+    <div class="lugar">
+      <div><b>${l.nome}</b> <span class="chip">${l.bairro}</span><div class="muted">${l.tipo}</div></div>
+      <div class="dist">${l.d != null ? (l.d < 1 ? Math.round(l.d * 1000) + " m" : l.d.toFixed(1) + " km") : (l.bairro === b ? "no seu bairro" : "")}</div>
+    </div>`).join("");
+}
+
+function haversine(a, b) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+window.usarLocalizacao = () => {
+  if (!navigator.geolocation) { $("locMsg").textContent = "seu navegador não tem localização"; return; }
+  $("locMsg").textContent = "lendo sua posição uma vez…";
+  navigator.geolocation.getCurrentPosition(
+    (p) => { minhaPos = { lat: p.coords.latitude, lng: p.coords.longitude }; renderLugares();
+             $("locMsg").textContent = "✓ ordenado por distância — a posição não foi enviada a ninguém"; },
+    (e) => { $("locMsg").textContent = "sem posição: " + e.message + " (tudo bem — escolha o bairro na lista)"; },
+    { timeout: 8000 });
+};
+
+window.criarComunidade = async () => {
+  const nome = $("cNome").value.trim(), bairro = $("cBairro").value.trim() || $("bairro").value,
+        cat = $("cCat").value, desc = $("cDesc").value.trim();
+  if (!nome || !bairro) { $("cMsg").textContent = "nome e bairro são obrigatórios"; return; }
+  try {
+    const r = await client.createRoom({
+      preset: "public_chat", visibility: "public",
+      name: nome, room_alias_name: "com-" + slug(nome),
+      topic: `bairro:${bairro} · cat:${cat} · ${desc || "comunidade da vizinhança"}`,
+      initial_state: [
+        { type: "m.room.history_visibility", content: { history_visibility: "world_readable" } },
+        { type: "m.conversa.comunidade", content: { bairro, categoria: cat, demo: true } },
+      ],
+    });
+    comunidades.push({ room_id: r.room_id, nome, membros: 1, bairro, cat, desc: desc || "comunidade da vizinhança", souMembro: true, amigos: [] });
+    renderGrafo(); renderLista(); renderFeed();
+    $("cMsg").innerHTML = `<span class="ok">✓ publicada! ela já aparece no grafo e no diretório</span>`;
+    $("cNome").value = ""; $("cDesc").value = "";
+  } catch (e) { $("cMsg").innerHTML = `<span class="err">falhou: ${e.message}</span>`; }
+};
+
+// sessão salva
+const u = localStorage.getItem("viz_user"), p = localStorage.getItem("viz_pass");
+if (u && p) { $("user").value = u; $("pass").value = p; entrar(); }
+</script>
+</body>
+</html>
