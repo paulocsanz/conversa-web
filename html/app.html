@@ -39,6 +39,7 @@ body {
 #rail .item .tx { min-width: 0; }
 #rail .item .tx b { display: block; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #rail .item .tx span { font-size: 0.75rem; color: #635849; }
+#rail .item.filho { margin-left: 20px; }
 #rail .acao {
   margin: 8px 8px 4px; padding: 8px 12px; border-radius: 10px; cursor: pointer;
   border: 1px dashed #b09a7e; color: #96412b; font-size: 0.88rem; font-weight: 600;
@@ -155,6 +156,7 @@ const BASE_PADRAO = "https://tuwunel-production-642475dc.up.railway.app";
 const $ = (id) => document.getElementById(id);
 let BASE = BASE_PADRAO, accessToken = null, meuUserId = null, minhaPos = null;
 let comunidades = [], diretas = [], parceirosDM = new Set(), minhasSalas = new Set();
+let espacosUsuario = []; // {spaceId, nome, desc, filhos:[{id,nome,tipo,privado,order}]}
 let vistaAtual = "chat";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -226,12 +228,36 @@ async function iniciar() {
   try {
     const sinc = await api(`/_matrix/client/v3/sync?filter=${encodeURIComponent(JSON.stringify({ room: { timeline: { limit: 1 } } }))}`);
     minhasSalas = new Set(Object.keys(sinc.rooms?.join || {}));
+    // espaços: salas cuja criação declara type m.space; filhos vivos = m.space.child com via
+    for (const [roomId, sala] of Object.entries(sinc.rooms?.join || {})) {
+      const evs = sala.state?.events || [];
+      const cria = evs.find(e => e.type === "m.room.create");
+      if (!cria || cria.content?.type !== "m.space") {
+        const ids2 = evs.filter(e => e.type === "m.room.member" && e.content?.membership === "join").map(e => e.state_key);
+        if (ids2.length === 2 && ids2.includes(meuUserId)) {
+          ids2.forEach(u => { if (u !== meuUserId) parceirosDM.add(u); });
+          diretas.push({ room_id: roomId, parceiro: ids2.find(u => u !== meuUserId) });
+        }
+        continue;
+      }
+      const nm = evs.find(e => e.type === "m.room.name");
+      const tp = evs.find(e => e.type === "m.room.topic");
+      const filhos = evs.filter(e => e.type === "m.space.child" && e.content?.via?.length)
+        .map(e => ({ id: e.state_key, nome: e.content.nome || null, tipo: e.content.tipo || "geral",
+                     privado: !!e.content.privado, order: e.content.order || "99" }))
+        .sort((a, b) => String(a.order).localeCompare(String(b.order)));
+      espacosUsuario.push({ spaceId: roomId,
+        nome: nm?.content?.name || "comunidade",
+        desc: tp?.content?.topic || "", filhos });
+    }
     for (const roomId of minhasSalas) {
-      const mm = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/joined_members`);
+      const mm = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/joined_members`).catch(() => null);
+      if (!mm) continue;
       const ids = (mm.joined || []).map(m => m.user_id);
       if (ids.length === 2 && ids.includes(meuUserId)) {
         ids.forEach(u => { if (u !== meuUserId) parceirosDM.add(u); });
-        diretas.push({ room_id: roomId, parceiro: ids.find(u => u !== meuUserId) });
+        if (!diretas.some(d2 => d2.room_id === roomId))
+          diretas.push({ room_id: roomId, parceiro: ids.find(u => u !== meuUserId) });
       }
     }
   } catch (e) { console.warn("sync", e); }
@@ -248,9 +274,13 @@ async function iniciar() {
       }
     } catch (e) { console.warn("diretório federado indisponível", e); }
   }
-  comunidades = chunk.filter(r => (r.topic || "").includes("bairro:")).map(r => {
+  const temSpaces = chunk.some(r => r.room_type === "m.space");
+  const dir = temSpaces ? chunk.filter(r => r.room_type === "m.space") : chunk.filter(r => (r.topic || "").includes("bairro:"));
+  comunidades = dir.map(r => {
     const m = (r.topic || "").match(/bairro:([^·]+) · cat:([^·]+) · ?(.*)/);
-    return { room_id: r.room_id, nome: r.name, membros: r.num_joined_members,
+    const esp = espacosUsuario.find(x => x.spaceId === r.room_id);
+    const geral = esp?.filhos.find(f => f.tipo === "geral");
+    return { spaceId: r.room_id, room_id: r.room_id, geralId: geral?.id || null, nome: r.name, membros: r.num_joined_members,
              bairro: m ? m[1].trim() : "?", cat: m ? m[2].trim() : "?", desc: m ? m[3].trim() : "",
              federado: !!r.__federado,
              souMembro: minhasSalas.has(r.room_id), amigos: [] };
@@ -288,10 +318,11 @@ async function monitorNotificacoes() {
       if (notifPrimeiroCiclo) { notifPrimeiroCiclo = false; continue; }
       if (usuarioOLhando) continue;
       for (const [rid, sala] of Object.entries(d.rooms?.join || {})) {
-        const c = comunidades.find(x => x.room_id === rid);
+        const esp = espacosUsuario.find(x => x.filhos.some(f => f.id === rid));
+        const nome = esp ? esp.nome : (comunidades.find(x => x.room_id === rid)?.nome || "Conversa");
         for (const ev of (sala.timeline?.events || [])) {
           if (ev.type === "m.room.message" && ev.content?.body && Notification.permission === "granted") {
-            new Notification("💬 " + (c ? c.nome : "Conversa"), {
+            new Notification("💬 " + nome, {
               body: String(ev.content.body).slice(0, 120),
               icon: "/icons/conversa.svg", tag: ev.event_id,
             });
@@ -320,7 +351,9 @@ async function atualizacoes(c) {
 }
 
 function renderFeed() {
-  Promise.all(comunidades.map(async c => ({ c, ups: await atualizacoes(c) }))).then(todos => {
+  const fontes = comunidades.filter(c => c.geralId).map(c => ({ ...c, room_id: c.geralId }));
+  const alvo = fontes.length ? fontes : comunidades;
+  Promise.all(alvo.map(async c => ({ c, ups: await atualizacoes(c) }))).then(todos => {
     const plano = todos.flatMap(({ c, ups }) => ups.map(u => ({ c, u }))).sort((a, b) => b.u.ts - a.u.ts).slice(0, 8);
     $("feed").innerHTML = plano.length ? plano.map(({ c, u }) => {
       const corpo = esc(u.texto.replace(/^(📌\s*)?\d{2}\/\d{2}(\s\d{2}:\d{2})?\s—\s?/, ""));
@@ -333,13 +366,22 @@ function renderFeed() {
   });
 }
 
+const TIPOIC = { geral: "💬", avisos: "📢", marketplace: "🛍️", conselho: "🔒" };
 function renderRail() {
-  const minhas = comunidades.filter(c => c.souMembro);
-  $("railComunidades").innerHTML = minhas.length ? minhas.map(c => `
-    <div class="item" onclick="abrirSala('${esc(c.room_id)}')" title="${esc(c.desc)}">
-      <div class="av" style="background:${CATCOR[c.cat] || "#635849"}">${esc(c.nome[0].toUpperCase())}</div>
-      <div class="tx"><b>${esc(c.nome)}</b><span>${c.membros} pessoas${c.federado ? " · ⛓️ federada" : ""}</span></div>
-    </div>`).join("")
+  $("railComunidades").innerHTML = espacosUsuario.length ? espacosUsuario.map(e => {
+    const canais = e.filhos.map(f => {
+      const ic = TIPOIC[f.tipo] || (f.privado ? "🔒" : "💬");
+      return `<div class="item filho" onclick="abrirSala('${esc(f.id)}')" title="${esc(f.nome || f.tipo)}">
+        <div class="av" style="background:#ffffff;color:#352d24;border:1px solid #dcd3c2;font-size:0.85rem">${ic}</div>
+        <div class="tx"><b>${esc(f.nome || f.tipo)}</b><span>${f.privado ? "privado · por convite" : "aberto"}</span></div>
+      </div>`;
+    }).join("");
+    const primeira = e.filhos[0];
+    return `<div class="item esp" onclick="${primeira ? `abrirSala('${esc(primeira.id)}')` : `mostrar('descobrir')`}" title="${esc(e.desc)}">
+      <div class="av" style="background:#96412b">${esc(e.nome[0].toUpperCase())}</div>
+      <div class="tx"><b>${esc(e.nome)}</b><span>comunidade · ${e.filhos.length} salas</span></div>
+    </div>${canais}`;
+  }).join("")
     : `<div class="item"><span class="muted">entre numa comunidade pela Descoberta</span></div>`;
   const dmLista = diretas.slice(0, 8);
   $("railDiretas").innerHTML = dmLista.length ? dmLista.map(d => `
@@ -388,8 +430,8 @@ function renderLista() {
       <p class="muted" style="margin-top:6px">${esc(c.desc)}</p>
       <div id="ups-${c.room_id.replace(/[^\w]/g, "")}" class="muted">atualizações…</div>
       ${c.souMembro
-        ? `<span class="ok">✓ você participa</span> <button class="sec" onclick="abrirSala('${esc(c.room_id)}')">abrir no chat →</button>`
-        : `${c.amigos?.length ? `<span class="amigos">chegue pelos seus amigos</span> ` : ""}<button onclick="entrarComunidade('${esc(c.room_id)}')">Participar</button>`}
+        ? `<span class="ok">✓ você participa</span> <button class="sec" onclick="abrirSala('${esc(c.geralId || esc(c.room_id))}')">abrir no chat →</button>`
+        : `${c.amigos?.length ? `<span class="amigos">chegue pelos seus amigos</span> ` : ""}<button onclick="entrarComunidade('${esc(c.room_id)}')">Participar no espaço</button>`}
     </div>`).join("");
   ordem.forEach(async c => {
     const ups = await atualizacoes(c);
@@ -414,7 +456,10 @@ async function entrarComunidadeSePreciso(roomId) {
     const c = comunidades.find(x => x.room_id === roomId);
     if (c) { c.souMembro = true; c.membros += 1; await contarAmigos(c); }
     renderRail();
-  } catch (e) { alert("não deu pra entrar: " + e.message); }
+  } catch (e) {
+    const msg = /403|forbidden/i.test(e.message) ? "🔒 sala privada — peça convite a um organizador da comunidade" : e.message;
+    alert(msg);
+  }
 }
 window.entrarComunidade = (roomId) => entrarComunidadeSePreciso(roomId).then(() => { renderGrafo(); renderLista(); renderRail(); abrirSala(roomId); });
 
