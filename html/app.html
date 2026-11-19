@@ -228,36 +228,28 @@ async function iniciar() {
   try {
     const sinc = await api(`/_matrix/client/v3/sync?filter=${encodeURIComponent(JSON.stringify({ room: { timeline: { limit: 1 } } }))}`);
     minhasSalas = new Set(Object.keys(sinc.rooms?.join || {}));
-    // espaços: salas cuja criação declara type m.space; filhos vivos = m.space.child com via
-    for (const [roomId, sala] of Object.entries(sinc.rooms?.join || {})) {
-      const evs = sala.state?.events || [];
+    // o sync não traz todo o estado: busca o estado completo de cada sala joined
+    for (const roomId of minhasSalas) {
+      const evs = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state`).catch(() => null);
+      if (!Array.isArray(evs) || !evs.length) continue;
       const cria = evs.find(e => e.type === "m.room.create");
-      if (!cria || cria.content?.type !== "m.space") {
-        const ids2 = evs.filter(e => e.type === "m.room.member" && e.content?.membership === "join").map(e => e.state_key);
-        if (ids2.length === 2 && ids2.includes(meuUserId)) {
-          ids2.forEach(u => { if (u !== meuUserId) parceirosDM.add(u); });
-          diretas.push({ room_id: roomId, parceiro: ids2.find(u => u !== meuUserId) });
-        }
+      if (cria && cria.content?.type === "m.space") {
+        const nm = evs.find(e => e.type === "m.room.name");
+        const tp = evs.find(e => e.type === "m.room.topic");
+        const filhos = evs.filter(e => e.type === "m.space.child" && e.content?.via?.length)
+          .map(e => ({ id: e.state_key, nome: e.content.nome || null, tipo: e.content.tipo || "geral",
+                       privado: !!e.content.privado, order: e.content.order || "99" }))
+          .sort((a, b) => String(a.order).localeCompare(String(b.order)));
+        espacosUsuario.push({ spaceId: roomId,
+          nome: nm?.content?.name || "comunidade",
+          desc: tp?.content?.topic || "", filhos });
         continue;
       }
-      const nm = evs.find(e => e.type === "m.room.name");
-      const tp = evs.find(e => e.type === "m.room.topic");
-      const filhos = evs.filter(e => e.type === "m.space.child" && e.content?.via?.length)
-        .map(e => ({ id: e.state_key, nome: e.content.nome || null, tipo: e.content.tipo || "geral",
-                     privado: !!e.content.privado, order: e.content.order || "99" }))
-        .sort((a, b) => String(a.order).localeCompare(String(b.order)));
-      espacosUsuario.push({ spaceId: roomId,
-        nome: nm?.content?.name || "comunidade",
-        desc: tp?.content?.topic || "", filhos });
-    }
-    for (const roomId of minhasSalas) {
-      const mm = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/joined_members`).catch(() => null);
-      if (!mm) continue;
-      const ids = (mm.joined || []).map(m => m.user_id);
-      if (ids.length === 2 && ids.includes(meuUserId)) {
-        ids.forEach(u => { if (u !== meuUserId) parceirosDM.add(u); });
+      const joins = evs.filter(e => e.type === "m.room.member" && e.content?.membership === "join").map(e => e.state_key);
+      if (joins.length === 2 && joins.includes(meuUserId)) {
+        joins.forEach(u => { if (u !== meuUserId) parceirosDM.add(u); });
         if (!diretas.some(d2 => d2.room_id === roomId))
-          diretas.push({ room_id: roomId, parceiro: ids.find(u => u !== meuUserId) });
+          diretas.push({ room_id: roomId, parceiro: joins.find(u => u !== meuUserId) });
       }
     }
   } catch (e) { console.warn("sync", e); }
