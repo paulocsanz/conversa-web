@@ -149,6 +149,8 @@ const LUGARES = [
 
 const CATCOR = { cultura: "#96412b", feira: "#755812", verde: "#3b6436", esporte: "#355680", "educação": "#635849", rede: "#8a5a2b", "ajuda mútua": "#3b6436" };
 const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+// escape de HTML: conteúdo de sala/lugar é dado de terceiros — nunca vai cru para innerHTML
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 // flags admin-only (query param, sem UI) — apagar em Done
 const FLAG = (n) => new URLSearchParams(location.search).has(n);
 const FLAG_DEDUP = FLAG("flag_viz_feed_dedup");
@@ -240,8 +242,8 @@ function renderFeed() {
     const plano = todos.flatMap(({ c, ups }) => ups.map(u => ({ c, u })))
       .sort((a, b) => b.u.ts - a.u.ts).slice(0, 8);
     f.innerHTML = plano.length ? plano.map(({ c, u }) => {
-      const corpo = FLAG_DEDUP ? u.texto.replace(/^(📌\s*)?\d{2}\/\d{2}(\s\d{2}:\d{2})?\s—\s?/, "") : u.texto;
-      return `<div class="update"><b>${c.nome}</b> <span class="chip">${c.bairro}</span><br>${u.data} — ${corpo}</div>`;
+      const corpo = esc(FLAG_DEDUP ? u.texto.replace(/^(📌\s*)?\d{2}\/\d{2}(\s\d{2}:\d{2})?\s—\s?/, "") : u.texto);
+      return `<div class="update"><b>${esc(c.nome)}</b> <span class="chip">${esc(c.bairro)}</span><br>${u.data} — ${corpo}</div>`;
     }).join("")
       : `<p class="muted">sem atualizações publicadas ainda</p>`;
   });
@@ -264,7 +266,7 @@ function renderGrafo() {
     const r = 7 + Math.min(18, p.membros * 1.1);
     const cor = CATCOR[p.cat] || "#635849";
     g += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${cor}" fill-opacity="0.85" stroke="#f2ece1" stroke-width="2" style="cursor:pointer" onclick="abrirCard('${p.room_id}')"><title>${p.nome} — ${p.membros} pessoas</title></circle>`;
-    g += `<text x="${p.x}" y="${p.y + r + 12}" text-anchor="middle" font-size="10" fill="#352d24">${p.bairro}</text>`;
+    g += `<text x="${p.x}" y="${p.y + r + 12}" text-anchor="middle" font-size="10" fill="#352d24">${p.bairro.replace(/[<>&]/g, "")}</text>`;
   }
   svg.innerHTML = g;
 }
@@ -275,20 +277,23 @@ function renderLista() {
     const pa = (a.bairro === mb ? 0 : 1) - (a.bairro === mb ? 0 : 1);
     return (a.bairro === mb ? 0 : 1) - (b.bairro === mb ? 0 : 1) || b.membros - a.membros;
   });
-  $("listaComunidades").innerHTML = ordem.map(c => `
+  $("listaComunidades").innerHTML = ordem.map(c => {
+    const idSeguro = esc(c.room_id);
+    return `
     <div class="card" id="card-${c.room_id.replace(/[^\w]/g, "")}">
-      <b>${c.nome}</b>
-      <span class="chip accent">${c.bairro}</span><span class="chip">${c.cat}</span>
+      <b>${esc(c.nome)}</b>
+      <span class="chip accent">${esc(c.bairro)}</span><span class="chip">${esc(c.cat)}</span>
       <span class="chip">${c.membros} pessoas</span>
       ${c.amigos?.length ? `<span class="amigos">· ${c.amigos.length} amigo${c.amigos.length > 1 ? "s" : ""} aqui</span>` : ""}
-      <p class="muted" style="margin-top:4px">${c.desc}</p>
+      <p class="muted" style="margin-top:4px">${esc(c.desc)}</p>
       <div id="ups-${c.room_id.replace(/[^\w]/g, "")}" class="muted">atualizações…</div>
       ${c.souMembro
         ? (FLAG_DEEPLINK
             ? `<span class="ok">✓ você participa —</span> <a href="/index.html#/room/${encodeURIComponent(c.room_id)}">abra no app →</a>`
             : `<span class="ok">✓ você participa — abra no app</span>`)
-        : `<button onclick="entrarComunidade('${c.room_id}')">Participar</button>`}
-    </div>`).join("");
+        : `<button onclick="entrarComunidade('${idSeguro.replace(/'/g, "&#39;")}')">Participar</button>`}
+    </div>`;
+  }).join("");
   ordem.forEach(async c => {
     const ups = await atualizacoes(c);
     const el = $("ups-" + c.room_id.replace(/[^\w]/g, ""));
@@ -319,7 +324,7 @@ function renderLugares() {
     });
   $("lugares").innerHTML = lista.map(l => `
     <div class="lugar">
-      <div><b>${l.nome}</b> <span class="chip">${l.bairro}</span><div class="muted">${l.tipo}</div></div>
+      <div><b>${esc(l.nome)}</b> <span class="chip">${esc(l.bairro)}</span><div class="muted">${esc(l.tipo)}</div></div>
       <div class="dist">${l.d != null ? (l.d < 1 ? Math.round(l.d * 1000) + " m" : l.d.toFixed(1) + " km") : (l.bairro === b ? "no seu bairro" : "")}</div>
     </div>`).join("");
 }
