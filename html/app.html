@@ -29,7 +29,27 @@ body {
 #conteudo { flex: 1; position: relative; }
 #chat { position: absolute; inset: 0; border: 0; width: 100%; height: 100%; display: none; }
 #viz { position: absolute; inset: 0; display: none; overflow-y: auto; padding: 14px; max-width: 860px; margin-inline: auto; }
-#viz h2 { font-size: 1.02rem; margin: 18px 0 8px; border-bottom: 1px solid #dcd3c2; padding-bottom: 5px; }
+#viz h2 { font-size: 1.15rem; font-weight: 700; margin: 26px 0 10px; }
+#viz .heroi { padding: 18px 0 6px; }
+#viz .heroi h1 { font-size: 1.5rem; font-weight: 750; letter-spacing: -0.5px; }
+.av-comunidade {
+  width: 38px; height: 38px; border-radius: 12px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff8ef; font-weight: 700; font-size: 1.05rem;
+}
+.cabeca { display: flex; gap: 12px; align-items: center; }
+.linha-feed {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 10px 2px; border-bottom: 1px solid #f2ece1;
+}
+.ponto { width: 9px; height: 9px; border-radius: 50%; flex: none; margin-top: 6px; }
+.linha-feed .quando { color: #635849; font-size: 0.78rem; white-space: nowrap; }
+.banner-rec {
+  background: rgb(117 88 18 / 0.08); border: 1px solid rgb(117 88 18 / 0.35);
+  border-radius: 14px; padding: 12px 14px; margin: 10px 0;
+  display: flex; gap: 10px; align-items: center; justify-content: space-between;
+}
+.banner-rec button { background: none; border: 0; color: #635849; font-size: 1rem; cursor: pointer; padding: 2px 6px; }
 .card {
   background: #ffffff; border: 1px solid #dcd3c2; border-radius: 16px;
   padding: 14px; margin: 10px 0;
@@ -70,6 +90,10 @@ a { color: #96412b; }
   <!-- o chat é a fonte da verdade da sessão: nunca criamos nem injetamos sessão -->
   <iframe id="chat" src="index.html" title="Conversa — chat"></iframe>
   <div id="viz">
+    <div class="heroi">
+      <h1>Comunidades</h1>
+      <p class="muted">O que rola perto de você e em qualquer canto da rede — local, federado ou global.</p>
+    </div>
     <div class="card">
       <b>Comunidades</b>
       <p class="muted">Locais do seu bairro, de outras células (federadas) e globais — na mesma lista.
@@ -223,10 +247,10 @@ async function iniciar() {
     await api(`/_matrix/client/v3/user/${encodeURIComponent(meuUserId)}/account_data/m.secret_storage.default_key`);
   } catch (e) {
     const banner = document.createElement("div");
-    banner.className = "card";
-    banner.innerHTML = `🔐 <b>Configure sua recuperação</b> (1 minuto): protege suas conversas para quando trocar de aparelho ou perder o acesso.
-      <button class="sec" onclick="abrirChat('#/user/settings/security')">Abrir configuração de segurança →</button>
-      <div class="muted">A frase que o app gerar é a SUA chave — guarde num lugar seguro. Você só precisa dela se perder o acesso.</div>`;
+    banner.className = "banner-rec";
+    banner.innerHTML = `<div>🔐 <b>Proteja suas conversas</b> — configure a recuperação (1 min) para não perder nada se trocar de aparelho.
+      <a href="#" onclick="abrirChat('#/user/settings/security');return false;">Configurar agora →</a></div>
+      <button title="depois" onclick="this.parentElement.remove()">×</button>`;
     $("viz").prepend(banner);
   }
 
@@ -284,8 +308,12 @@ function renderFeed() {
   Promise.all(comunidades.map(async c => ({ c, ups: await atualizacoes(c) }))).then(todos => {
     const plano = todos.flatMap(({ c, ups }) => ups.map(u => ({ c, u }))).sort((a, b) => b.u.ts - a.u.ts).slice(0, 8);
     $("feed").innerHTML = plano.length ? plano.map(({ c, u }) => {
-      const corpo = esc(FLAG_DEDUP ? u.texto.replace(/^(📌\s*)?\d{2}\/\d{2}(\s\d{2}:\d{2})?\s—\s?/, "") : u.texto);
-      return `<div class="update"><b>${esc(c.nome)}</b> <span class="chip">${esc(c.bairro)}</span><br>${u.data} — ${corpo}</div>`;
+      const corpo = esc(u.texto.replace(/^(📌\s*)?\d{2}\/\d{2}(\s\d{2}:\d{2})?\s—\s?/, ""));
+      const cor = CATCOR[c.cat] || "#635849";
+      return `<div class="linha-feed">
+        <div class="ponto" style="background:${cor}"></div>
+        <div><b>${esc(c.nome)}</b> <span class="quando">· ${u.data}</span><br>${corpo}</div>
+      </div>`;
     }).join("") : `<p class="muted">sem atualizações publicadas ainda</p>`;
   });
 }
@@ -315,8 +343,14 @@ function renderLista() {
   const ordem = [...comunidades].sort((a, b) => (a.bairro === mb ? 0 : 1) - (b.bairro === mb ? 0 : 1) || b.membros - a.membros);
   $("listaComunidades").innerHTML = ordem.map(c => `
     <div class="card" id="card-${c.room_id.replace(/[^\w]/g, "")}">
-      <b>${esc(c.nome)}</b>
-      <span class="chip accent">${esc(c.bairro)}</span><span class="chip">${esc(c.cat)}</span>
+      <div class="cabeca">
+        <div class="av-comunidade" style="background:${CATCOR[c.cat] || "#635849"}">${esc(c.nome[0].toUpperCase())}</div>
+        <div>
+          <b style="font-size:1.02rem">${esc(c.nome)}</b>
+          <span class="chip accent">${esc(c.bairro)}</span><span class="chip">${esc(c.cat)}</span>
+          ${c.federado ? `<span class="chip">⛓️ federada</span>` : ""}
+        </div>
+      </div>
       ${c.federado ? `<span class="chip">⛓️ federada</span>` : ""}
       <span class="chip">${c.membros} pessoas</span>
       ${c.amigos?.length ? `<span class="amigos">· ${c.amigos.length} amigo${c.amigos.length > 1 ? "s" : ""} aqui</span>` : ""}
