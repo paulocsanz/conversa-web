@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ela é a Arte — página verificada na Conversa</title>
+<meta name="description" content="Página verificada da rede Conversa: Ela é a Arte — ela-e-a-arte.up.railway.app">
+<link rel="icon" type="image/svg+xml" href="/icons/conversa.svg">
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; margin: 0; }
+body { background: #f2ece1; color: #352d24; font-family: system-ui, -apple-system, sans-serif; max-width: 760px; margin-inline: auto; padding: 24px 18px 60px; }
+.card { background: #ffffff; border: 1px solid #dcd3c2; border-radius: 16px; padding: 16px; margin: 12px 0; box-shadow: 0 1px 3px rgb(53 45 36 / 0.06), 0 4px 14px rgb(53 45 36 / 0.05); }
+.chip { display: inline-block; background: #f2ece1; border: 1px solid #dcd3c2; border-radius: 999px; padding: 2px 10px; font-size: 0.75rem; margin: 2px 4px 2px 0; color: #635849; }
+.verificada { display: inline-flex; align-items: center; gap: 6px; background: rgb(59 100 54 / 0.1); border: 1px solid rgb(59 100 54 / 0.45); color: #3b6436; border-radius: 999px; padding: 4px 12px; font-size: 0.82rem; font-weight: 700; }
+a { color: #96412b; }
+.muted { color: #635849; font-size: 0.85rem; }
+h1 { font-size: 1.5rem; font-weight: 750; letter-spacing: -0.4px; }
+h2 { font-size: 1rem; margin: 20px 0 8px; }
+.atual { border-left: 3px solid #dcd3c2; padding: 4px 0 4px 10px; margin: 6px 0; font-size: 0.9rem; color: #635849; }
+.atual b { color: #352d24; }
+#canal { display: none; }
+button { background: #96412b; color: #fff8ef; border: 0; border-radius: 12px; padding: 8px 16px; font-size: 0.95rem; cursor: pointer; margin: 4px 0; }
+button.sec { background: #e9e1d2; color: #352d24; border: 1px solid #dcd3c2; }
+</style>
+</head>
+<body>
+<div class="card" style="text-align:center;padding:22px">
+  <div style="font-size:2.4rem;line-height:1">🎨</div>
+  <h1 style="margin-top:8px">Ela é a Arte</h1>
+  <div class="verificada" style="margin-top:8px">✓ verificada na Conversa</div>
+  <p class="muted" style="margin-top:10px">domínio verificado: <b>ela-e-a-arte.up.railway.app</b><br>
+  verificação da equipe Conversa em 19/11/2026</p>
+</div>
+
+<div class="card">
+  <h2 style="margin:0 0 6px">O que é</h2>
+  <p style="font-size:0.95rem">Projeto de arte da rede Conversa — a página oficial vive em
+  <a href="https://ela-e-a-arte.up.railway.app/" target="_blank" rel="noopener">ela-e-a-arte.up.railway.app</a> ✓
+  e o canal de conversa da comunidade vive aqui, sempre cifrado.</p>
+  <p style="margin-top:8px"><span class="chip">arte</span><span class="chip">Centro</span><span class="chip">⛓️ página própria</span></p>
+</div>
+
+<div class="card">
+  <h2 style="margin:0 0 6px">Entrar na comunidade</h2>
+  <p class="muted" style="margin-bottom:8px">O canal abre no chat da Conversa — entre com sua conta para participar.</p>
+  <button onclick="entrarCanal()">Abrir o canal no chat →</button>
+  <div id="msg" class="muted" style="margin-top:6px"></div>
+</div>
+
+<div class="card">
+  <h2 style="margin:0 0 6px">Verificação</h2>
+  <p class="muted" style="font-size:0.85rem">Como a verificação funciona nesta fase: a equipe Conversa confirma o
+  vínculo entre o domínio e a comunidade (link bidirecional + registro na sala). Quando a 0020 trouxer contas
+  business, a verificação passa a ser automática via token de domínio.</p>
+  <p class="muted" style="font-size:0.85rem;margin-top:6px">Estado da sala no protocolo:
+  <code style="font-size:0.75rem">m.conversa.verified · dominio:ela-e-a-arte.up.railway.app · 2026-11-19</code></p>
+</div>
+
+<script type="module">
+const ROOM = "!onucG5L4cFG9pBGAIYXyxaUQQHHOHZmSNiks4nAClbc";
+const BASE = "https://tuwunel-production-642475dc.up.railway.app";
+// feed público da página (world_readable — sem login pra ler os avisos)
+try {
+  const d = await (await fetch(`${BASE}/_matrix/client/v3/rooms/${encodeURIComponent(ROOM)}/messages?dir=b&limit=5`)).json();
+  const ups = (d.chunk || []).filter(e => e.type === "m.room.message" && e.content?.body).slice(0, 3);
+  const el = document.createElement("div");
+  el.className = "card";
+  el.innerHTML = `<h2 style="margin:0 0 6px">Avisos</h2>` + (ups.map(e =>
+    `<div class="atual"><b>${new Date(e.origin_server_ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</b> — ${e.content.body}</div>`).join("")
+    || `<p class="muted">sem avisos ainda</p>`);
+  document.body.appendChild(el);
+} catch (e) {}
+</script>
+
+<script>
+// entrar no canal: usa o token do Conversa se o usuário já logou no app; senão, manda pro app
+window.entrarCanal = async function () {
+  const ROOM = "!onucG5L4cFG9pBGAIYXyxaUQQHHOHZmSNiks4nAClbc";
+  const tok = localStorage.getItem("conv_token") || localStorage.getItem("mx_access_token");
+  const BASE = "https://tuwunel-production-642475dc.up.railway.app";
+  const msg = document.getElementById("msg");
+  if (!tok) { msg.innerHTML = "entre na Conversa primeiro: <a href='/index.html'>abrir o app</a>"; return; }
+  try {
+    const r = await fetch(`${BASE}/_matrix/client/v3/rooms/${encodeURIComponent(ROOM)}/join`, { method: "POST", headers: { Authorization: `Bearer ${tok}` }, body: "{}" });
+    if (r.ok) { msg.innerHTML = "<span class='ok'>✓ você entrou — a sala abre no chat</span>"; location.hash = ""; window.open("/index.html#/room/" + encodeURIComponent(ROOM), "_blank"); }
+    else msg.textContent = "falhou: " + r.status;
+  } catch (e) { msg.textContent = "falhou: " + e.message; }
+};
+</script>
+</body>
+</html>
