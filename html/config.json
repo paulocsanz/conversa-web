@@ -11,7 +11,7 @@
     "authHeaderLogoUrl": "https://web-production-59608537.up.railway.app/icons/conversa.svg"
   },
   "setting_defaults": {
-    "language": "pt_BR"
+    "language": "pt-br"
   },
   "default_country_code": "BR",
   "disable_custom_urls": true,

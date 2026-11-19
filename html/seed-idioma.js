@@ -1,7 +1,7 @@
-// Semeia pt_BR como idioma padrão antes do bundle do Element bootar.
-// 1) faz o detector de locale do app ler pt-BR (o Element força o locale
-//    do browser em cima do localStorage a cada boot);
-// 2) semeia language=pt_BR no mx_local_settings como segunda trava.
+// Semeia pt-br como idioma padrão antes do bundle do Element bootar.
+// O valor exato aceito pelo manifesto de locales do app é "pt-br"
+// (minúsculo com hífen — "pt_BR"/"pt-BR" não casam e caem no fallback "en").
+// Faz o detector de locale ler pt-BR também (para telas que detectam o browser).
 // Não sobrescreve a escolha de quem já trocou o idioma manualmente.
 try {
   Object.defineProperty(navigator, "language", { get: () => "pt-BR", configurable: true });
@@ -10,8 +10,9 @@ try {
 try {
   var s = {};
   try { s = JSON.parse(localStorage.getItem("mx_local_settings") || "{}"); } catch (e) {}
-  if (!s.language || s.language === "en") {
-    s.language = "pt_BR";
+  var errado = !s.language || s.language === "en" || s.language === "pt_BR" || s.language === "pt-BR";
+  if (errado) {
+    s.language = "pt-br";
     localStorage.setItem("mx_local_settings", JSON.stringify(s));
   }
 } catch (e) {}
