@@ -10,6 +10,10 @@ const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,
 
 // ── sessão: lê do documento do app (fonte única — o Element) ──
 async function lerSessao() {
+  // sessão própria do painel (conv_*) — sobrevive a qualquer limpeza do Element
+  const ct = localStorage.getItem("conv_token"), cu = localStorage.getItem("conv_uid"), ch = localStorage.getItem("conv_hs");
+  if (ct && cu && ch) return { hs: ch, uid: cu, tok: ct };
+  if (!localStorage.getItem("mx_has_access_token") && ct && cu) return { hs: ch || BASE_PADRAO, uid: cu, tok: ct };
   let hs = localStorage.getItem("mx_hs_url"), uid = localStorage.getItem("mx_user_id"), tok = localStorage.getItem("mx_access_token");
   if (tok && uid && hs) return { hs, uid, tok };
   const db = await new Promise((res) => {
