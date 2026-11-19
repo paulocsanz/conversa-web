@@ -265,7 +265,7 @@ function renderGrafo() {
   for (const p of pos) {
     const r = 7 + Math.min(18, p.membros * 1.1);
     const cor = CATCOR[p.cat] || "#635849";
-    g += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${cor}" fill-opacity="0.85" stroke="#f2ece1" stroke-width="2" style="cursor:pointer" onclick="abrirCard('${p.room_id}')"><title>${p.nome} — ${p.membros} pessoas</title></circle>`;
+    g += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${cor}" fill-opacity="0.85" stroke="#f2ece1" stroke-width="2" style="cursor:pointer" onclick="abrirCard('${p.room_id.replace(/[^\w]/g, "")}')"><title>${esc(p.nome)} — ${p.membros} pessoas</title></circle>`;
     g += `<text x="${p.x}" y="${p.y + r + 12}" text-anchor="middle" font-size="10" fill="#352d24">${p.bairro.replace(/[<>&]/g, "")}</text>`;
   }
   svg.innerHTML = g;
@@ -297,7 +297,7 @@ function renderLista() {
   ordem.forEach(async c => {
     const ups = await atualizacoes(c);
     const el = $("ups-" + c.room_id.replace(/[^\w]/g, ""));
-    if (el) el.innerHTML = ups.map(u => `<div class="update">${u.texto}</div>`).join("") || `<div class="update">sem updates</div>`;
+    if (el) el.innerHTML = ups.map(u => `<div class="update">${u.data} — ${esc(u.texto)}</div>`).join("") || `<div class="update">sem updates</div>`;
   });
 }
 
