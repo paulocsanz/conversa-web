@@ -129,14 +129,13 @@ organizadores escolhem publicar.</p>
 </div>
 
 <script type="module">
-import * as sdk from "https://cdn.jsdelivr.net/npm/matrix-js-sdk@34/+esm";
-import { initWasm } from "https://cdn.jsdelivr.net/npm/@matrix-org/matrix-sdk-crypto-wasm@14/+esm";
-
+// fetch puro na API do Matrix — a vizinhança trata só de salas públicas
+// (plaintext por escolha dos organizadores), então não precisa do sdk E2EE.
 const BASE = "https://tuwunel-production-642475dc.up.railway.app";
 const SERVER = "tuwunel-production-642475dc.up.railway.app";
 const SECRET = "eaf68ebd8a0c3880c7eaee6b5a55911c12bf934c90e327d0";
 const $ = (id) => document.getElementById(id);
-let client = null, accessToken = null, minhaPos = null, comunidades = [], parceirosDM = new Set();
+let accessToken = null, meuUserId = null, minhaPos = null, comunidades = [], parceirosDM = new Set(), minhasSalas = new Set();
 
 // lugares-demo (spike; na produção viram Páginas da 0014)
 const LUGARES = [
@@ -151,49 +150,54 @@ const LUGARES = [
 const CATCOR = { cultura: "#96412b", feira: "#755812", verde: "#3b6436", esporte: "#355680", "educação": "#635849", rede: "#8a5a2b", "ajuda mútua": "#3b6436" };
 const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-// login (mesma mecânica do marketplace: senha → fallback registro admin)
+// login: senha → fallback registro admin (spike)
 window.entrar = async function () {
   const user = $("user").value.trim(), pass = $("pass").value;
   if (!user || !pass) { $("msg").textContent = "preencha usuário e senha"; return; }
   $("msg").textContent = "entrando…";
-  try { await initWasm(); } catch (e) {}
-  client = sdk.createClient({ baseUrl: BASE, userId: `@${user}:${SERVER}`, accessToken: null, store: new sdk.MemoryStore() });
-  client.deviceId = "VIZ-" + Math.random().toString(36).slice(2, 6).toUpperCase();
-  let userId = `@${user}:${SERVER}`;
   try {
-    const r = await client.login("m.login.password", { identifier: { type: "m.id.user", user }, password: pass, device_id: client.deviceId });
-    accessToken = r.access_token; userId = r.user_id;
-  } catch (e) {
+    const r = await (await fetch(`${BASE}/_matrix/client/v3/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "m.login.password", identifier: { type: "m.id.user", user }, password: pass, device_id: "VIZ-" + Math.random().toString(36).slice(2, 6).toUpperCase() }) })).json();
+    if (!r.access_token) throw new Error(r.errcode || "senha recusada");
+    accessToken = r.access_token; meuUserId = r.user_id;
+  } catch (eLogin) {
     const n = await (await fetch(`${BASE}/_synapse/admin/v1/register`)).json();
     const enc = new TextEncoder();
     const key = await crypto.subtle.importKey("raw", enc.encode(SECRET), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
     const macBuf = await crypto.subtle.sign("HMAC", key, enc.encode(`${n}\0${user}\0${pass}\0notadmin`));
     const mac = [...new Uint8Array(macBuf)].map(b => b.toString(16).padStart(2, "0")).join("");
     const r2 = await (await fetch(`${BASE}/_synapse/admin/v1/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nonce: n, username: user, password: pass, admin: false, mac }) })).json();
-    if (!r2.access_token) { $("msg").textContent = "login falhou: " + (r2.errcode || e.message || "?"); return; }
-    accessToken = r2.access_token; userId = r2.user_id;
-    client = sdk.createClient({ baseUrl: BASE, userId, accessToken, store: new sdk.MemoryStore() });
+    if (!r2.access_token) { $("msg").textContent = "login falhou: " + (r2.errcode || eLogin.message || "?"); return; }
+    accessToken = r2.access_token; meuUserId = r2.user_id;
   }
   localStorage.setItem("viz_user", user); localStorage.setItem("viz_pass", pass);
   $("msg").textContent = "";
   $("login").style.display = "none"; $("app").style.display = "";
-  await carregarTudo(userId);
+  await carregarTudo();
 };
 
-async function api(path, opts = {}) {
+const api = async (path, opts = {}) => {
   const r = await fetch(BASE + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: `Bearer ${accessToken}` } });
   if (!r.ok) throw new Error(`${path}: ${r.status}`);
   return r.json();
-}
+};
 
-async function carregarTudo(userId) {
-  // 1) bairros conhecidos no select
+async function carregarTudo() {
   const bairros = [...new Set(LUGARES.map(l => l.bairro))].sort();
   $("bairro").innerHTML = `<option value="">— escolha seu bairro —</option>` + bairros.map(b => `<option>${b}</option>`).join("");
   const bSalvo = localStorage.getItem("viz_bairro"); if (bSalvo) $("bairro").value = bSalvo;
   $("bairro").onchange = () => { localStorage.setItem("viz_bairro", $("bairro").value); renderLugares(); };
 
-  // 2) comunidades do diretório público
+  // minhas salas → parceiros de DM e participações (tudo calculado no meu aparelho)
+  try {
+    const sinc = await api(`/_matrix/client/v3/sync?filter=${encodeURIComponent(JSON.stringify({ room: { timeline: { limit: 1 } } }))}`);
+    minhasSalas = new Set(Object.keys(sinc.rooms?.join || {}));
+    for (const roomId of minhasSalas) {
+      const mm = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/joined_members`);
+      const ids = (mm.joined || []).map(m => m.user_id);
+      if (ids.length === 2 && ids.includes(meuUserId)) ids.forEach(u => { if (u !== meuUserId) parceirosDM.add(u); });
+    }
+  } catch (e) { console.warn("sync", e); }
+
   const d = await api("/_matrix/client/v3/publicRooms", { method: "POST", body: JSON.stringify({ limit: 50 }) });
   comunidades = (d.chunk || []).filter(r => (r.topic || "").includes("bairro:")).map(r => {
     const m = (r.topic || "").match(/bairro:([^·]+) · cat:([^·]+) · ?(.*)/);
@@ -201,30 +205,18 @@ async function carregarTudo(userId) {
       room_id: r.room_id, nome: r.name, alias: r.canonical_alias,
       membros: r.num_joined_members,
       bairro: m ? m[1].trim() : "?", cat: m ? m[2].trim() : "?", desc: m ? m[3].trim() : "",
-      souMembro: false, amigos: null,
+      souMembro: minhasSalas.has(r.room_id), amigos: [],
     };
   });
-
-  // 3) sync: quem são os meus contatos (parceiros de DM) — só no meu aparelho
-  await client.startClient({ initialSyncLimit: 1 });
-  await new Promise(res => client.once(sdk.ClientEvent.Sync, st => { if (st === sdk.SyncState.Prepared) res(); }));
-  for (const room of client.getRooms()) {
-    const membros = room.getJoinedMembers().map(m => m.userId);
-    if (membros.length === 2 && membros.includes(userId)) membros.forEach(u => { if (u !== userId) parceirosDM.add(u); });
-  }
-  // salas que já participo
-  for (const c of comunidades) if (client.getRoom(c.room_id)) { c.souMembro = true; await contarAmigos(c); }
+  for (const c of comunidades) if (c.souMembro) await contarAmigos(c);
 
   renderGrafo(); renderLista(); renderFeed(); renderLugares();
 }
 
 async function contarAmigos(c) {
   try {
-    const room = client.getRoom(c.room_id);
-    if (!room) return;
-    const membros = room.getJoinedMembers().map(m => m.userId);
-    c.amigos = membros.filter(u => parceirosDM.has(u));
-    if (!c.souMembro && c.amigos.length) c.souMembro = client.getRoom(c.room_id)?.getMyMembership?.() === "join";
+    const mm = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(c.room_id)}/joined_members`);
+    c.amigos = (mm.joined || []).map(m => m.user_id).filter(u => parceirosDM.has(u));
   } catch (e) {}
 }
 
@@ -232,16 +224,18 @@ async function atualizacoes(c) {
   try {
     const d = await api(`/_matrix/client/v3/rooms/${encodeURIComponent(c.room_id)}/messages?dir=b&limit=3`);
     return (d.chunk || []).filter(e => e.type === "m.room.message" && e.content?.body).slice(0, 3)
-      .map(e => new Date(e.origin_server_ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " — " + e.content.body);
+      .map(e => ({ ts: e.origin_server_ts,
+                   texto: new Date(e.origin_server_ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " — " + e.content.body }));
   } catch (e) { return []; }
 }
 
 function renderFeed() {
   const f = $("feed"); f.textContent = "carregando…";
   Promise.all(comunidades.map(async c => ({ c, ups: await atualizacoes(c) }))).then(todos => {
-    const plano = todos.flatMap(({ c, ups }) => ups.map(u => ({ c, u }))).sort((a, b) => 0).slice(0, 8);
+    const plano = todos.flatMap(({ c, ups }) => ups.map(u => ({ c, u })))
+      .sort((a, b) => b.u.ts - a.u.ts).slice(0, 8);
     f.innerHTML = plano.length ? plano.map(({ c, u }) =>
-      `<div class="update"><b>${c.nome}</b> <span class="chip">${c.bairro}</span><br>${u}</div>`).join("")
+      `<div class="update"><b>${c.nome}</b> <span class="chip">${c.bairro}</span><br>${u.texto}</div>`).join("")
       : `<p class="muted">sem atualizações publicadas ainda</p>`;
   });
 }
@@ -289,7 +283,7 @@ function renderLista() {
   ordem.forEach(async c => {
     const ups = await atualizacoes(c);
     const el = $("ups-" + c.room_id.replace(/[^\w]/g, ""));
-    if (el) el.innerHTML = ups.map(u => `<div class="update">${u}</div>`).join("") || `<div class="update">sem updates</div>`;
+    if (el) el.innerHTML = ups.map(u => `<div class="update">${u.texto}</div>`).join("") || `<div class="update">sem updates</div>`;
   });
 }
 
@@ -300,10 +294,10 @@ window.abrirCard = (roomId) => {
 
 window.entrarComunidade = async (roomId) => {
   try {
-    await client.joinRoom(roomId);
+    await api(`/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/join`, { method: "POST", body: "{}" });
     const c = comunidades.find(x => x.room_id === roomId);
-    if (c) { c.souMembro = true; await contarAmigos(c); }
-    renderLista();
+    if (c) { c.souMembro = true; c.membros += 1; await contarAmigos(c); }
+    renderGrafo(); renderLista();
   } catch (e) { alert("não deu pra entrar: " + e.message); }
 };
 
@@ -343,7 +337,7 @@ window.criarComunidade = async () => {
         cat = $("cCat").value, desc = $("cDesc").value.trim();
   if (!nome || !bairro) { $("cMsg").textContent = "nome e bairro são obrigatórios"; return; }
   try {
-    const r = await client.createRoom({
+    const r = await api("/_matrix/client/v3/createRoom", { method: "POST", body: JSON.stringify({
       preset: "public_chat", visibility: "public",
       name: nome, room_alias_name: "com-" + slug(nome),
       topic: `bairro:${bairro} · cat:${cat} · ${desc || "comunidade da vizinhança"}`,
@@ -351,7 +345,7 @@ window.criarComunidade = async () => {
         { type: "m.room.history_visibility", content: { history_visibility: "world_readable" } },
         { type: "m.conversa.comunidade", content: { bairro, categoria: cat, demo: true } },
       ],
-    });
+    }) });
     comunidades.push({ room_id: r.room_id, nome, membros: 1, bairro, cat, desc: desc || "comunidade da vizinhança", souMembro: true, amigos: [] });
     renderGrafo(); renderLista(); renderFeed();
     $("cMsg").innerHTML = `<span class="ok">✓ publicada! ela já aparece no grafo e no diretório</span>`;
