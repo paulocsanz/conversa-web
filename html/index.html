@@ -1,14 +1,6 @@
 <!doctype html>
 <html lang="pt-BR" style="height: 100%;">
   <head>
-    <script>
-    // desregistrar-sw: mata o service worker e os caches do build antigo que
-    // ressuscitam a versão velha do app em atualizações
-    try {
-      if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
-      if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k)));
-    } catch (e) {}
-    </script>
     <meta charset="utf-8">
     <title>Conversa</title>
     <link rel="apple-touch-icon" sizes="120x120" href="vector-icons/120.570a7f9.png">
@@ -16,9 +8,6 @@
     <link rel="apple-touch-icon" sizes="152x152" href="vector-icons/152.1ccdc8a.png">
     <link rel="apple-touch-icon" sizes="180x180" href="vector-icons/180.30b915f.png">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/svg+xml" href="icons/conversa.svg">
-    <meta name="application-name" content="Conversa">
-    <meta name="theme-color" content="#f2ece1">
     <meta name="referrer" content="no-referrer">
     <link rel="icon" type="image/png" sizes="24x24" href="vector-icons/24.97ab000.png">
     <link rel="icon" type="image/png" sizes="144x144" href="vector-icons/144.5a63bf2.png">
@@ -43,31 +32,32 @@
         manifest-src 'self' ;
     ">
     
-           <link rel="stylesheet" href="bundles/a3c4a9333467af402de8/bundle.css">
+           <link rel="stylesheet" href="bundles/b4175bfd191551cd5e9c/bundle.css">
         
-           <link rel="stylesheet" disabled="disabled" data-mx-theme="Legacy-light" title="Legacy-light" href="bundles/a3c4a9333467af402de8/theme-legacy-light.css">
+           <link rel="stylesheet" disabled="disabled" data-mx-theme="Legacy-light" title="Legacy-light" href="bundles/b4175bfd191551cd5e9c/theme-legacy-light.css">
         
-           <link rel="stylesheet" disabled="disabled" data-mx-theme="Legacy-dark" title="Legacy-dark" href="bundles/a3c4a9333467af402de8/theme-legacy-dark.css">
+           <link rel="stylesheet" disabled="disabled" data-mx-theme="Legacy-dark" title="Legacy-dark" href="bundles/b4175bfd191551cd5e9c/theme-legacy-dark.css">
         
-           <link rel="stylesheet" disabled="disabled" data-mx-theme="Light" title="Light" href="bundles/a3c4a9333467af402de8/theme-light.css">
+           <link rel="stylesheet" disabled="disabled" data-mx-theme="Light" title="Light" href="bundles/b4175bfd191551cd5e9c/theme-light.css">
         
-           <link rel="stylesheet" disabled="disabled" data-mx-theme="Light-high-contrast" title="Light-high-contrast" href="bundles/a3c4a9333467af402de8/theme-light-high-contrast.css">
+           <link rel="stylesheet" disabled="disabled" data-mx-theme="Light-high-contrast" title="Light-high-contrast" href="bundles/b4175bfd191551cd5e9c/theme-light-high-contrast.css">
         
-           <link rel="stylesheet" disabled="disabled" data-mx-theme="Dark" title="Dark" href="bundles/a3c4a9333467af402de8/theme-dark.css">
+           <link rel="stylesheet" disabled="disabled" data-mx-theme="Dark" title="Dark" href="bundles/b4175bfd191551cd5e9c/theme-dark.css">
         
-           <link rel="stylesheet" disabled="disabled" data-mx-theme="Light-custom" title="Light-custom" href="bundles/a3c4a9333467af402de8/theme-light-custom.css">
+           <link rel="stylesheet" disabled="disabled" data-mx-theme="Light-custom" title="Light-custom" href="bundles/b4175bfd191551cd5e9c/theme-light-custom.css">
         
-           <link rel="stylesheet" disabled="disabled" data-mx-theme="Dark-custom" title="Dark-custom" href="bundles/a3c4a9333467af402de8/theme-dark-custom.css">
+           <link rel="stylesheet" disabled="disabled" data-mx-theme="Dark-custom" title="Dark-custom" href="bundles/b4175bfd191551cd5e9c/theme-dark-custom.css">
         
 
     
 
-  </head>
+  <link rel="stylesheet" href="conversa.css">
+</head>
   <body style="height: 100%; margin: 0;">
     <noscript>Sorry, Element requires JavaScript to be enabled.</noscript> <!-- TODO: Translate this? -->
     <div id="matrixchat" style="height: 100%;" class="notranslate"></div>
 
-    <script src="bundles/a3c4a9333467af402de8/bundle.js"></script>
+    <script src="bundles/b4175bfd191551cd5e9c/bundle.js"></script>
 
 
     <!-- Legacy supporting Prefetch images -->
@@ -86,9 +76,8 @@
     <div id="mx_Dialog_StaticContainer"></div>
     <div id="mx_Dialog_Container"></div>
     <div id="mx_ContextualMenu_Container"></div>
-  <link rel="stylesheet" href="conversa.css">
-    <script src="seed-idioma.js"></script>
-    <script src="painel.js"></script>
-    <script src="rotas.js"></script>
+  <script src="seed-idioma.js"></script>
+<script src="painel.js"></script>
+<script src="rotas.js"></script>
 </body>
 </html>
