@@ -1,6 +1,14 @@
 <!doctype html>
 <html lang="pt-BR" style="height: 100%;">
   <head>
+    <script>
+    // desregistrar-sw: mata o service worker e os caches do build antigo que
+    // ressuscitam a versão velha do app em atualizações
+    try {
+      if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+      if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k)));
+    } catch (e) {}
+    </script>
     <meta charset="utf-8">
     <title>Conversa</title>
     <link rel="apple-touch-icon" sizes="120x120" href="vector-icons/120.570a7f9.png">
