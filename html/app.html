@@ -54,7 +54,7 @@ label { font-size: 0.8rem; color: #635849; display: block; margin-top: 8px; }
 .lugar { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f2ece1; font-size: 0.92rem; }
 .lugar .dist { color: #96412b; white-space: nowrap; }
 a { color: #96412b; }
-#entrarCard { max-width: 460px; margin: 40px auto; }
+#esperando { max-width: 520px; margin: 40px auto; }
 </style>
 </head>
 <body>
@@ -67,7 +67,8 @@ a { color: #96412b; }
 </div>
 
 <div id="conteudo">
-  <iframe id="chat" src="about:blank" title="Conversa — chat"></iframe>
+  <!-- o chat é a fonte da verdade da sessão: nunca criamos nem injetamos sessão -->
+  <iframe id="chat" src="index.html" title="Conversa — chat"></iframe>
   <div id="viz">
     <div class="card">
       <b>Comunidades</b>
@@ -77,7 +78,7 @@ a { color: #96412b; }
         <div><label>Filtro por bairro (opcional)</label><select id="bairro"></select></div>
         <div style="flex:0"><label>&nbsp;</label><button class="sec" onclick="usarLocalizacao()">📍 base física perto de mim</button></div>
       </div>
-      <div class="muted">A localização é lida uma vez, só no seu aparelho, só para ordenar as bases físicas. Nada é enviado.</div>
+      <div class="muted">A localização é lida uma vez, só no seu aparelho. Nada é enviado.</div>
     </div>
     <h2>O que está acontecendo</h2>
     <div id="feed">carregando…</div>
@@ -103,18 +104,14 @@ a { color: #96412b; }
   </div>
 </div>
 
-<div id="entrarCard" class="card" style="display:none">
-  <b>Entrar no Conversa</b>
-  <p class="muted">Um login só — vale para o chat e para a vizinhança.</p>
-  <label>Usuário</label><input id="user" placeholder="ex: paulo">
-  <label>Senha</label><input id="pass" type="password">
-  <button onclick="entrar()">Entrar</button>
+<div id="esperando" class="card" style="display:none">
+  <b>Entre no chat abaixo 👇</b>
+  <p class="muted">Um login só — quando você entrar no chat, a aba Comunidades ativa sozinha.</p>
   <div id="msg" class="muted"></div>
 </div>
 
 <script type="module">
 const BASE_PADRAO = "https://tuwunel-production-642475dc.up.railway.app";
-const SECRET = "eaf68ebd8a0c3880c7eaee6b5a55911c12bf934c90e327d0";
 const $ = (id) => document.getElementById(id);
 let BASE = BASE_PADRAO, accessToken = null, meuUserId = null, minhaPos = null;
 let comunidades = [], parceirosDM = new Set(), minhasSalas = new Set();
@@ -123,7 +120,6 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<"
 const FLAG = (n) => new URLSearchParams(location.search).has(n);
 const FLAG_DEDUP = FLAG("flag_viz_feed_dedup");
 const FLAG_DEEPLINK = FLAG("flag_viz_deeplink");
-const FLAG_ONBOARDING = FLAG("flag_onboarding_chaves");
 const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 const LUGARES = [
@@ -136,7 +132,6 @@ const LUGARES = [
 ];
 const CATCOR = { cultura: "#96412b", feira: "#755812", verde: "#3b6436", esporte: "#355680", "educação": "#635849", rede: "#8a5a2b", "ajuda mútua": "#3b6436" };
 
-// ── abas ──
 function mostrar(qual) {
   $("chat").style.display = qual === "chat" ? "block" : "none";
   $("viz").style.display = qual === "viz" ? "block" : "none";
@@ -146,75 +141,39 @@ function mostrar(qual) {
 $("abaChat").onclick = () => mostrar("chat");
 $("abaViz").onclick = () => mostrar("viz");
 
-// ── sessão: um login só — o shell loga e injeta a sessão no chat ──
-async function loginApi(user, pass) {
-  const r = await fetch(`${BASE}/_matrix/client/v3/login`, { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "m.login.password", identifier: { type: "m.id.user", user }, password: pass, device_id: "SHELL-" + Math.random().toString(36).slice(2, 6).toUpperCase() }) });
-  const j = await r.json();
-  if (!j.access_token) throw new Error(j.errcode || "login recusado");
-  return j;
+// ── sessão: lemos a sessão DO APP (que é a fonte da verdade) — nunca criamos nem injetamos ──
+async function lerSessaoDoApp() {
+  // 1) algumas versões guardam no localStorage
+  let hs = localStorage.getItem("mx_hs_url"), uid = localStorage.getItem("mx_user_id"), tok = localStorage.getItem("mx_access_token");
+  if (tok && uid && hs) return { hs, uid, tok };
+  // 2) esta versão guarda no IndexedDB matrix-react-sdk → store account → chaves mx_*
+  const db = await new Promise((res) => {
+    const r = indexedDB.open("matrix-react-sdk");
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => res(null);
+    r.onblocked = () => res(null);
+  });
+  if (!db || ![...db.objectStoreNames].includes("account")) { if (db) db.close(); return null; }
+  const tx = db.transaction("account", "readonly");
+  const get = (k) => new Promise((res2) => {
+    const rq = tx.objectStore("account").get(k);
+    rq.onsuccess = () => res2(rq.result);
+    rq.onerror = () => res2(null);
+  });
+  tok = await get("mx_access_token"); uid = await get("mx_user_id"); hs = await get("mx_hs_url");
+  db.close();
+  const plano = (v) => typeof v === "string" ? v : (v && typeof v === "object" ? (v.value ?? v.token ?? null) : null);
+  tok = plano(tok); uid = plano(uid); hs = plano(hs);
+  if (tok && uid && hs) return { hs, uid, tok };
+  return null;
 }
-function injetarSessaoNoApp(tok, userId) {
-  // element-web boota logado se estas chaves existirem antes do load do iframe
-  localStorage.setItem("mx_hs_url", BASE);
-  localStorage.setItem("mx_user_id", userId);
-  localStorage.setItem("mx_access_token", tok);
-  localStorage.setItem("mx_device_id", "SHELL");
-  localStorage.setItem("mx_has_access_token", "true");
-  localStorage.setItem("mx_is_guest", "false");
-}
+
 function abrirChat(hash) {
   const f = $("chat");
-  if (f.src === "about:blank") f.src = "index.html" + (hash || "");
-  else if (hash) f.contentWindow.location.hash = hash; // mesma origem: troca de sala sem reload
+  if (f.src.endsWith("about:blank") || !f.src.includes("index.html")) f.src = "index.html" + (hash || "");
+  else if (hash) try { f.contentWindow.location.hash = hash; } catch (e) { f.src = "index.html" + (hash || ""); }
   mostrar("chat");
 }
-
-window.entrar = async function () {
-  const user = $("user").value.trim(), pass = $("pass").value;
-  if (!user || !pass) { $("msg").textContent = "preencha usuário e senha"; return; }
-  $("msg").textContent = "entrando…";
-  try {
-    let j;
-    try { j = await loginApi(user, pass); }
-    catch (eSenha) {
-      // spike: primeiro acesso — registra via segredo admin e loga
-      const n = await (await fetch(`${BASE}/_synapse/admin/v1/register`)).json();
-      const enc = new TextEncoder();
-      const key = await crypto.subtle.importKey("raw", enc.encode(SECRET), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
-      const macBuf = await crypto.subtle.sign("HMAC", key, enc.encode(`${n}\0${user}\0${pass}\0notadmin`));
-      const mac = [...new Uint8Array(macBuf)].map(b => b.toString(16).padStart(2, "0")).join("");
-      const r2 = await (await fetch(`${BASE}/_synapse/admin/v1/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nonce: n, username: user, password: pass, admin: false, mac }) })).json();
-      if (!r2.access_token) throw eSenha;
-      j = r2;
-    }
-    accessToken = j.access_token; meuUserId = j.user_id;
-    if (j.home_server) BASE = `https://${j.home_server}`;
-    injetarSessaoNoApp(accessToken, meuUserId);
-    localStorage.setItem("conv_user", user); localStorage.setItem("conv_pass", pass);
-    $("entrarCard").style.display = "none";
-    $("eu").textContent = meuUserId.split(":")[0];
-    await iniciar();
-    abrirChat();
-  } catch (e) { $("msg").textContent = "falhou: " + e.message; }
-};
-
-// ── boot: sessão do app (mx_*) ou sessão salva do shell ──
-(function boot() {
-  const hs = localStorage.getItem("mx_hs_url");
-  const tok = localStorage.getItem("mx_access_token");
-  const uid = localStorage.getItem("mx_user_id");
-  if (hs && tok && uid) {
-    BASE = hs; accessToken = tok; meuUserId = uid;
-    $("entrarCard").style.display = "none";
-    $("eu").textContent = uid.split(":")[0];
-    iniciar().then(() => mostrar("chat"));
-    return;
-  }
-  const u = localStorage.getItem("conv_user"), p = localStorage.getItem("conv_pass");
-  if (u && p) { $("user").value = u; $("pass").value = p; entrar(); return; }
-  $("entrarCard").style.display = "block";
-})();
 
 const api = async (path, opts = {}) => {
   const r = await fetch(BASE + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: `Bearer ${accessToken}` } });
@@ -240,7 +199,6 @@ async function iniciar() {
 
   const d = await api("/_matrix/client/v3/publicRooms", { method: "POST", body: JSON.stringify({ limit: 50 }) });
   let chunk = d.chunk || [];
-  // descoberta federada: o diretório também consulta outras células (federado/global)
   const R2 = "tuwunel-r2-production.up.railway.app";
   if (!BASE.includes("r2")) {
     try {
@@ -260,25 +218,22 @@ async function iniciar() {
   });
   for (const c of comunidades) if (c.souMembro) await contarAmigos(c);
 
-  // o-9bd5ad: parede de chaves sem surpresa — detecta secret storage ausente e orienta em PT-BR
+  // o-9bd5ad: parede de chaves sem surpresa — orienta em PT-BR se falta provisionar
   try {
     await api(`/_matrix/client/v3/user/${encodeURIComponent(meuUserId)}/account_data/m.secret_storage.default_key`);
   } catch (e) {
-    if (FLAG_ONBOARDING) {
-      const banner = document.createElement("div");
-      banner.className = "card";
-      banner.innerHTML = `🔐 <b>Configure sua recuperação</b> (1 minuto): protege suas conversas para quando trocar de aparelho ou perder o acesso.
-        <button class="sec" onclick="abrirChat('#/user/settings/security')">Abrir configuração de segurança →</button>
-        <div class="muted">A frase que o app gerar é a SUA chave — guarde num lugar seguro. Você só precisa dela se perder o acesso.</div>`;
-      $("viz").prepend(banner);
-    }
+    const banner = document.createElement("div");
+    banner.className = "card";
+    banner.innerHTML = `🔐 <b>Configure sua recuperação</b> (1 minuto): protege suas conversas para quando trocar de aparelho ou perder o acesso.
+      <button class="sec" onclick="abrirChat('#/user/settings/security')">Abrir configuração de segurança →</button>
+      <div class="muted">A frase que o app gerar é a SUA chave — guarde num lugar seguro. Você só precisa dela se perder o acesso.</div>`;
+    $("viz").prepend(banner);
   }
 
   renderGrafo(); renderLista(); renderFeed(); renderLugares();
   monitorNotificacoes();
 }
 
-// o-b0fd57 P0-1: notificação local quando mensagem chega e você não está olhando
 let notifSince = null, notifPrimeiroCiclo = true;
 async function monitorNotificacoes() {
   if (!("Notification" in window)) return;
@@ -291,7 +246,7 @@ async function monitorNotificacoes() {
       if (notifSince) params.set("since", notifSince);
       const d = await api("/_matrix/client/v3/sync?" + params.toString());
       notifSince = d.next_batch;
-      if (notifPrimeiroCiclo) { notifPrimeiroCiclo = false; continue; } // 1º ciclo só coleta posição
+      if (notifPrimeiroCiclo) { notifPrimeiroCiclo = false; continue; }
       if (usuarioOLhando) continue;
       for (const [rid, sala] of Object.entries(d.rooms?.join || {})) {
         const c = comunidades.find(x => x.room_id === rid);
@@ -378,10 +333,9 @@ function renderLista() {
   });
 }
 
-// a comunidade É uma sala: abrir troca a sala no chat embutido, na hora
+// a comunidade É uma sala do chat: abrir troca a sala no chat embutido, na hora
 window.abrirSala = (roomId) => {
   entrarComunidadeSePreciso(roomId).then(() => {
-    localStorage.setItem("mx_last_room_id", roomId);
     abrirChat("#/room/" + encodeURIComponent(roomId));
   });
 };
@@ -436,6 +390,30 @@ window.criarComunidade = async () => {
     $("cMsg").innerHTML = `<span class="ok">✓ publicada — clique no nó para abrir no chat</span>`;
   } catch (e) { $("cMsg").innerHTML = `<span class="err">falhou: ${e.message}</span>`; }
 };
+
+// ── boot: o app (iframe) é quem manda na sessão; o painel só a acompanha ──
+async function boot() {
+  const ativaCom = (sess) => {
+    BASE = sess.hs; accessToken = sess.tok; meuUserId = sess.uid;
+    $("esperando").style.display = "none";
+    $("eu").textContent = meuUserId.split(":")[0];
+    iniciar().catch((e) => { $("msg").textContent = "falhou ao carregar comunidades: " + e.message; });
+  };
+  let sess = await lerSessaoDoApp();
+  if (sess) {
+    ativaCom(sess);
+    mostrar("chat");
+    return;
+  }
+  // sem sessão: o chat mostra o login nativo dele; o painel ativa sozinho quando entrar
+  $("esperando").style.display = "block";
+  mostrar("chat");
+  const poll = setInterval(async () => {
+    const s = await lerSessaoDoApp();
+    if (s) { clearInterval(poll); ativaCom(s); mostrar("viz"); }
+  }, 2000);
+}
+boot();
 </script>
 </body>
 </html>
