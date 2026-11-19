@@ -1,12 +1,12 @@
-// painel.js v2 — trilha lateral de Comunidades INJETADA no app (mesmo documento)
-// Discord-like: [trilha de comunidades][salas do elemento][chat]
-// a sessao e a do Element (mesma origem): LS + IDB — nunca criamos nem injetamos
+// painel.js v3 — Descoberta estruturada: abas por contexto, filtros por categoria e região
+// a sessão é a do Element (LS + IDB) — o painel só lê
 const BASE_PADRAO = "https://tuwunel-production-642475dc.up.railway.app";
-let BASE = BASE_PADRAO, accessToken = null, meuUserId = null;
-let comunidades = [], minhasSalas = new Set();
+let BASE = BASE_PADRAO, accessToken = null;
+let comunidades = [], marketplaces = [], eventos = [], minhasSalas = new Set();
+let aba = "comunidades", filtroCat = null, filtroBairro = null;
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const CATCOR = { cultura: "#96412b", feira: "#755812", verde: "#3b6436", esporte: "#355680", "educacao": "#635849", rede: "#8a5a2b", "ajuda mutua": "#3b6436" };
+const CATCOR = { cultura: "#96412b", feira: "#755812", verde: "#3b6436", esporte: "#355680", "educação": "#635849", rede: "#8a5a2b", "arte": "#5a3b8a", "ajuda mútua": "#3b6436" };
 
 async function lerSessao() {
   const ct = localStorage.getItem("conv_token"), cu = localStorage.getItem("conv_uid"), ch = localStorage.getItem("conv_hs");
@@ -38,6 +38,7 @@ const api = async (path, opts = {}) => {
   return r.json();
 };
 
+// ── trilha fixa ──
 function criarTrilha() {
   if (document.getElementById("convTrilha")) return;
   const rail = document.createElement("div");
@@ -50,10 +51,11 @@ function criarTrilha() {
     </div>
     <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.8px;color:#635849;padding:12px 14px 4px;opacity:.75">Minhas comunidades</div>
     <div id="convRailComunidades"><div style="padding:6px 14px;color:#635849;font-size:0.82rem">…</div></div>
-    <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.8px;color:#635849;padding:14px 14px 4px;opacity:.75">Descobrir</div>
+    <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.8px;color:#635849;padding:14px 14px 4px;opacity:.75">Navegar</div>
     <div style="padding:0 8px">
-      <button id="convBtnDescobrir" style="width:100%;background:rgb(150 65 43 / .06);color:#96412b;border:1px dashed #b09a7e;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer;text-align:left">descobrir comunidades da rede</button>
-    </div>`;
+      <button id="convBtnDescobrir" style="width:100%;background:rgb(150 65 43 / .06);color:#96412b;border:1px dashed #b09a7e;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer;text-align:left">🔎 descobrir por categoria, região e contexto</button>
+    </div>
+    <div style="padding:10px 14px;font-size:0.75rem;color:#635849">A sessão é a do chat — o painel só acompanha.</div>`;
   document.body.appendChild(rail);
   rail.querySelector("#convBtnDescobrir").onclick = abrirDescoberta;
   const st = document.createElement("style");
@@ -61,107 +63,167 @@ function criarTrilha() {
   document.head.appendChild(st);
 }
 
+// ── descoberta estruturada ──
 let painelDesc = null;
 function abrirDescoberta() {
   if (painelDesc && painelDesc.style.display !== "none") { painelDesc.style.display = "none"; return; }
   if (!painelDesc) {
     painelDesc = document.createElement("div");
     painelDesc.id = "convDescoberta";
-    painelDesc.style.cssText = "position:fixed;right:0;top:0;bottom:0;width:440px;z-index:7500;background:#f2ece1;color:#352d24;font-family:system-ui,-apple-system,sans-serif;overflow-y:auto;border-left:1px solid #dcd3c2;padding:18px 16px";
+    painelDesc.style.cssText = "position:fixed;right:0;top:0;bottom:0;width:480px;z-index:7500;background:#f2ece1;color:#352d24;font-family:system-ui,-apple-system,sans-serif;overflow-y:auto;border-left:1px solid #dcd3c2;padding:16px";
     document.body.appendChild(painelDesc);
   }
   painelDesc.style.display = "block";
   carregarDescoberta();
 }
+window.fecharDescoberta = () => { const p = document.getElementById("convDescoberta"); if (p) p.style.display = "none"; };
 
-comunidades = [];
 async function carregarDescoberta() {
   const sess = await lerSessao();
   if (!sess) {
-    if (painelDesc) painelDesc.innerHTML = "<b>Entre no chat primeiro</b><p style=color:#635849;font-size:0.85rem>Feche este painel, faca login no formulario do app e volte aqui.</p>";
+    painelDesc.innerHTML = `<b>Entre no chat primeiro</b><p style="color:#635849;font-size:0.85rem">O login é no chat (aba Conversas). Aqui ativa sozinho depois.</p>`;
     return;
   }
-  BASE = sess.hs; accessToken = sess.tok; meuUserId = sess.uid;
+  BASE = sess.hs; accessToken = sess.tok;
   try { const j = await api("/_matrix/client/v3/joined_rooms", {}); minhasSalas = new Set(j.joined_rooms || []); } catch (e) {}
-  const d = await api("/_matrix/client/v3/publicRooms", { method: "POST", body: JSON.stringify({ limit: 50 }) });
-  comunidades = (d.chunk || []).filter(r => r.room_type === "m.space").map(r => {
-    const m = (r.topic || "").match(/bairro:([^·]+) · cat:([^·]+) · ?(.*)/);
-    return { room_id: r.room_id, nome: r.name, membros: r.num_joined_members,
-             bairro: m ? m[1].trim() : "?", cat: m ? m[2].trim() : "?", desc: m ? m[3].trim() : "",
-             souMembro: minhasSalas.has(r.room_id) };
-  });
-  renderDescoberta();
+  const d = await api("/_matrix/client/v3/publicRooms", { method: "POST", body: JSON.stringify({ limit: 100 }) });
+  const chunk = d.chunk || [];
+  comunidades = []; marketplaces = []; eventos = [];
+  for (const r of chunk) {
+    const topic = r.topic || "";
+    const m = topic.match(/bairro:([^·]+) · cat:([^·]+) · ?(.*)/);
+    if (r.room_type === "m.space") {
+      comunidades.push({ room_id: r.room_id, nome: r.name, membros: r.num_joined_members,
+        bairro: m ? m[1].trim() : "?", cat: m ? m[2].trim() : "?", desc: m ? m[3].trim() : "",
+        souMembro: minhasSalas.has(r.room_id) });
+    } else if (r.name && r.name.startsWith("marketplace — ")) {
+      marketplaces.push({ room_id: r.room_id, nome: r.name.replace("marketplace — ", ""), membros: r.num_joined_members,
+        bairro: m ? (m[1]||"").trim() : "?", souMembro: minhasSalas.has(r.room_id) });
+    } else if (topic.startsWith("evento · quando:")) {
+      const em = topic.match(/evento · quando:([^·]+) · local:([^·]+) · ?(.*)/);
+      eventos.push({ room_id: r.room_id, titulo: em ? em[3].trim() : r.name, quando: em ? em[1].trim() : "?",
+        local: em ? em[2].trim() : "?", membros: r.num_joined_members, souMembro: minhasSalas.has(r.room_id) });
+    }
+  }
+  render();
 }
 
-async function renderDescoberta() {
-  if (!painelDesc) return;
-  const linhas = comunidades.map(c => {
-    const cor = CATCOR[c.cat] || "#635849";
-    return `<div style="display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #dcd3c2;border-radius:14px;padding:10px;margin:8px 0">
-      <div style="width:34px;height:34px;border-radius:10px;background:${cor};color:#fff8ef;display:flex;align-items:center;justify-content:center;font-weight:700">${esc(c.nome[0].toUpperCase())}</div>
-      <div style="flex:1;min-width:0"><b style="font-size:0.92rem">${esc(c.nome)}</b>
-        <div style="color:#635849;font-size:0.78rem">${esc(c.bairro)} · ${esc(c.desc).slice(0, 60)}</div></div>
-      <span style="color:#635849;font-size:0.75rem">${c.membros}</span>
-      ${c.souMembro ? `<button onclick="irSala('${esc(c.room_id)}')" style="background:#e9e1d2;color:#352d24;border:1px solid #dcd3c2;border-radius:8px;padding:4px 10px;cursor:pointer">abrir</button>`
-                    : `<button onclick="entrarEspaco('${esc(c.room_id)}')" style="background:#96412b;color:#fff8ef;border:0;border-radius:8px;padding:4px 10px;cursor:pointer">participar</button>`}
-    </div>`;
-  }).join("");
-  painelDesc.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <b style="font-size:1.05rem">Comunidades da rede</b>
+function chipsCategoria() {
+  const cats = [...new Set(comunidades.map(c => c.cat))];
+  return cats.map(cat => `<button class="chip-f ${filtroCat === cat ? "ativa" : ""}" data-cat="${cat}" onclick="setCat('${cat}')">${cat}</button>`).join("");
+}
+window.setCat = (cat) => { filtroCat = filtroCat === cat ? null : cat; render(); };
+
+function render() {
+  const bairros = [...new Set(comunidades.map(c => c.bairro))].sort();
+  const contagem = { comunidades: comunidades.length, marketplace: marketplaces.length, eventos: eventos.length };
+  const abaBtn = (id, label) => `<button class="abaF ${aba === id ? "ativa" : ""}" onclick="setAba('${id}')">${label}</button>`;
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <b style="font-size:1.05rem">Descobrir</b>
       <button onclick="fecharDescoberta()" style="background:none;border:0;color:#635849;cursor:pointer;font-size:1rem">fechar</button>
     </div>
-    <div style="font-size:0.78rem;color:#635849;margin-bottom:6px">Clicar em abrir troca a sala do chat ao lado.</div>
-    ${linhas || "<p style=color:#635849>nenhuma comunidade publicada ainda</p>"}`;
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      ${abaBtn("comunidades", "Comunidades")}
+      ${abaBtn("marketplace", "Marketplace")}
+      ${abaBtn("eventos", "Eventos")}
+    </div>`;
+  if (aba === "comunidades") {
+    const cats = [...new Set(comunidades.map(c => c.cat))];
+    html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="font-size:0.75rem;color:#635849;align-self:center">tipo:</span>
+      ${cats.map(cat => `<button class="chip-f ${filtroCat === cat ? "ativa" : ""}" onclick="setCat('${esc(cat)}')">${esc(cat)}</button>`).join("")}
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="font-size:0.75rem;color:#635849;align-self:center">região:</span>
+      ${bairros.map(b => `<button class="chip-f ${filtroBairro === b ? "ativa" : ""}" onclick="setBairro('${esc(b)}')">${esc(b)}</button>`).join("")}
+    </div>`;
+    const lista = comunidades
+      .filter(c => !filtroCat || c.cat === filtroCat)
+      .filter(c => !filtroBairro || c.bairro === filtroBairro);
+    html += lista.map(c => cardComunidade(c)).join("") || `<p style="color:#635849">nada com esse filtro</p>`;
+  } else if (aba === "marketplace") {
+    html += marketplaces.length ? marketplaces.map(m => cardMarket(m)).join("") : `<p style="color:#635849">nenhum marketplace aberto ainda</p>`;
+  } else {
+    html += eventos.length ? eventos.map(e => cardEvento(e)).join("") : `<p style="color:#635849">nenhum evento marcado ainda</p>`;
+  }
+  painelDesc.innerHTML = html;
 }
-window.fecharDescoberta = () => { const p = document.getElementById("convDescoberta"); if (p) p.style.display = "none"; };
+function cardComunidade(c) {
+  const cor = CATCOR[c.cat] || "#635849";
+  const acao = c.souMembro
+    ? `<button style="background:#e9e1d2;color:#352d24;border:1px solid #dcd3c2;border-radius:8px;padding:4px 10px;cursor:pointer" onclick="irSala('${esc(c.room_id)}')">abrir</button>`
+    : `<button style="background:#96412b;color:#fff8ef;border:0;border-radius:8px;padding:4px 10px;cursor:pointer" onclick="entrarEspaco('${esc(c.room_id)}')">participar</button>`;
+  return `<div style="display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #dcd3c2;border-radius:14px;padding:10px;margin:8px 0">
+    <div style="width:34px;height:34px;border-radius:10px;background:${cor};color:#fff8ef;display:flex;align-items:center;justify-content:center;font-weight:700">${esc(c.nome[0].toUpperCase())}</div>
+    <div style="flex:1;min-width:0"><b style="font-size:0.92rem">${esc(c.nome)}</b>
+      <div style="color:#635849;font-size:0.78rem">${esc(c.bairro)} · ${esc(c.desc).slice(0, 55)}</div></div>
+    <span style="color:#635849;font-size:0.75rem">${c.membros}</span>
+    ${acao}
+  </div>`;
+}
+function cardMarket(m) {
+  return `<div style="display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #dcd3c2;border-radius:14px;padding:10px;margin:8px 0">
+    <div style="font-size:1.3rem">mercado</div>
+    <div style="flex:1"><b style="font-size:0.92rem">${esc(m.nome)}</b>
+      <div style="color:#635849;font-size:0.78rem">canal de compra e venda · ${m.membros} no canal</div></div>
+    <button style="margin:0" onclick="irSala('${esc(m.room_id)}')">abrir</button>
+  </div>`;
+}
+function cardEvento(e) {
+  return `<div style="background:#fff;border:1px solid #dcd3c2;border-radius:14px;padding:10px;margin:8px 0">
+    <b style="font-size:0.92rem">${esc(e.titulo)}</b>
+    <div style="color:#635849;font-size:0.78rem">${esc(e.quando)} · ${esc(e.local)} · ${e.membros} confirmados</div>
+    <button style="margin-top:6px" onclick="entrarEvento('${esc(e.room_id)}')">eu vou</button>
+  </div>`;
+}
+window.setAba = (a) => { aba = a; render(); };
+window.setBairro = (b) => { filtroBairro = filtroBairro === b ? null : b; render(); };
 
-window.irSala = (roomId) => {
-  fecharDescoberta();
-  location.hash = "#/room/" + encodeURIComponent(roomId);
+window.entrarEvento = async (roomId) => {
+  try {
+    await api(`/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/join`, { method: "POST", body: "{}" });
+    await carregarDescoberta();
+  } catch (e) { alert("não deu: " + e.message); }
 };
 window.entrarEspaco = async (roomId) => {
   try {
     await api(`/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/join`, { method: "POST", body: "{}" });
     const c = comunidades.find(x => x.room_id === roomId);
     if (c) { c.souMembro = true; c.membros += 1; }
-    await carregarDescoberta();
-  } catch (e) { alert("nao deu: " + e.message); }
+    render();
+  } catch (e) { alert("não deu: " + e.message); }
 };
+window.irSala = (roomId) => {
+  fecharDescoberta();
+  location.hash = "#/room/" + encodeURIComponent(roomId);
+};
+window.fecharDescoberta = () => { const p = document.getElementById("convDescoberta"); if (p) p.style.display = "none"; };
 
+// estilos dos chips/filtros/abas
+const st = document.createElement("style");
+st.textContent = `
+.chip-f { background:#fff;border:1px solid #dcd3c2;border-radius:999px;padding:3px 10px;font-size:0.75rem;color:#352d24;cursor:pointer;margin:2px 2px; }
+.chip-f.ativa { background:#96412b;color:#fff8ef;border-color:#96412b; }
+.abaF { background:#fff;border:1px solid #dcd3c2;border-radius:10px;padding:6px 10px;font-size:0.85rem;color:#352d24;cursor:pointer;flex:1; }
+.abaF.ativa { background:#96412b;color:#fff8ef;border-color:#96412b; }
+`;
+document.head.appendChild(st);
+
+// ── boot: espera a sessão do app e monta a trilha ──
 (function boot() {
   const tent = setInterval(async () => {
     const sess = await lerSessao();
     if (sess) {
       clearInterval(tent);
-      BASE = sess.hs; accessToken = sess.tok; meuUserId = sess.uid;
+      BASE = sess.hs; accessToken = sess.tok;
       criarTrilha();
-      const railC = document.getElementById("convRailComunidades");
-      if (railC) railC.innerHTML = "<div style=padding:6px 14px;color:#635849>carregando comunidades…</div>";
       try {
         const j = await api("/_matrix/client/v3/joined_rooms", {});
         minhasSalas = new Set(j.joined_rooms || []);
-        const d = await api("/_matrix/client/v3/publicRooms", { method: "POST", body: JSON.stringify({ limit: 50 }) });
-        comunidades = (d.chunk || []).filter(r => r.room_type === "m.space").map(r => {
-          const m = (r.topic || "").match(/bairro:([^·]+) · cat:([^·]+) · ?(.*)/);
-          return { room_id: r.room_id, nome: r.name, membros: r.num_joined_members,
-                   bairro: m ? m[1].trim() : "?", cat: m ? m[2].trim() : "?", desc: m ? m[3].trim() : "",
-                   souMembro: minhasSalas.has(r.room_id) };
-        });
-      } catch (e) { console.warn(e); }
-      renderRail();
+      } catch (e) {}
+      const railC = document.getElementById("convRailComunidades");
+      if (railC) railC.innerHTML = `<div style="padding:6px 14px;color:#635849;font-size:0.82rem">abre o 🔎 descobrir pra navegar</div>`;
     }
-  }, 2000);
+  }, 2500);
 })();
-
-function renderRail() {
-  const railC = document.getElementById("convRailComunidades");
-  if (!railC) return;
-  railC.innerHTML = comunidades.map(c => {
-    const cor = CATCOR[c.cat] || "#635849";
-    return `<div class="item" onclick="irSala('${esc(c.room_id)}')" title="${esc(c.desc)}" style="display:flex;align-items:center;gap:10px;padding:6px 10px;margin:2px 8px;border-radius:10px;cursor:pointer">
-      <div style="width:30px;height:30px;border-radius:9px;background:${cor};color:#fff8ef;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none">${esc(c.nome[0].toUpperCase())}</div>
-      <div style="min-width:0"><b style="display:block;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nome)}</b>
-      <span style="font-size:0.7rem;color:#635849">${c.membros} pessoas</span></div>
-    </div>`;
-  }).join("") || "<div style=padding:6px 14px;color:#635849>—</div>";
-}
