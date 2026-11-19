@@ -61,7 +61,7 @@ a { color: #96412b; }
 <div id="barra">
   <img src="/icons/conversa.svg" alt="">
   <button class="aba" id="abaChat">💬 Conversas</button>
-  <button class="aba" id="abaViz">🏘️ Vizinhança</button>
+  <button class="aba" id="abaViz">🏘️ Comunidades</button>
   <span class="espaco"></span>
   <span class="eu" id="eu"></span>
 </div>
@@ -70,12 +70,14 @@ a { color: #96412b; }
   <iframe id="chat" src="about:blank" title="Conversa — chat"></iframe>
   <div id="viz">
     <div class="card">
-      <b>Onde você vive?</b>
+      <b>Comunidades</b>
+      <p class="muted">Locais do seu bairro, de outras células (federadas) e globais — na mesma lista.
+      Bairro é só um filtro opcional, não uma grade.</p>
       <div class="row">
-        <div><label>Seu bairro (você declara, ninguém rastreia)</label><select id="bairro"></select></div>
-        <div style="flex:0"><label>&nbsp;</label><button class="sec" onclick="usarLocalizacao()">📍 localização agora</button></div>
+        <div><label>Filtro por bairro (opcional)</label><select id="bairro"></select></div>
+        <div style="flex:0"><label>&nbsp;</label><button class="sec" onclick="usarLocalizacao()">📍 base física perto de mim</button></div>
       </div>
-      <div class="muted">A localização é lida uma vez, só no seu aparelho. Nada é enviado.</div>
+      <div class="muted">A localização é lida uma vez, só no seu aparelho, só para ordenar as bases físicas. Nada é enviado.</div>
     </div>
     <h2>O que está acontecendo</h2>
     <div id="feed">carregando…</div>
@@ -85,7 +87,7 @@ a { color: #96412b; }
       <p class="muted">Tamanho = gente participando · linha = mesmo bairro · cor = tipo. Clique no nó para abrir a sala no chat.</p>
     </div>
     <div id="listaComunidades"></div>
-    <h2>Espaços físicos ao seu redor</h2>
+    <h2>Bases físicas (quando existirem)</h2>
     <div id="lugares"></div>
     <h2>Criar comunidade</h2>
     <div class="card">
@@ -236,10 +238,23 @@ async function iniciar() {
   } catch (e) { console.warn("sync", e); }
 
   const d = await api("/_matrix/client/v3/publicRooms", { method: "POST", body: JSON.stringify({ limit: 50 }) });
-  comunidades = (d.chunk || []).filter(r => (r.topic || "").includes("bairro:")).map(r => {
+  let chunk = d.chunk || [];
+  // descoberta federada: o diretório também consulta outras células (federado/global)
+  const R2 = "tuwunel-r2-production.up.railway.app";
+  if (!BASE.includes("r2")) {
+    try {
+      const df = await api("/_matrix/client/v3/publicRooms", { method: "POST", body: JSON.stringify({ limit: 50, server: R2 }) });
+      const ids = new Set(chunk.map(r => r.room_id));
+      for (const r of (df.chunk || [])) {
+        if (!ids.has(r.room_id) && (r.topic || "").includes("bairro:")) { r.__federado = R2; chunk.push(r); }
+      }
+    } catch (e) { console.warn("diretório federado indisponível", e); }
+  }
+  comunidades = chunk.filter(r => (r.topic || "").includes("bairro:")).map(r => {
     const m = (r.topic || "").match(/bairro:([^·]+) · cat:([^·]+) · ?(.*)/);
     return { room_id: r.room_id, nome: r.name, membros: r.num_joined_members,
              bairro: m ? m[1].trim() : "?", cat: m ? m[2].trim() : "?", desc: m ? m[3].trim() : "",
+             federado: !!r.__federado,
              souMembro: minhasSalas.has(r.room_id), amigos: [] };
   });
   for (const c of comunidades) if (c.souMembro) await contarAmigos(c);
@@ -300,6 +315,7 @@ function renderLista() {
     <div class="card" id="card-${c.room_id.replace(/[^\w]/g, "")}">
       <b>${esc(c.nome)}</b>
       <span class="chip accent">${esc(c.bairro)}</span><span class="chip">${esc(c.cat)}</span>
+      ${c.federado ? `<span class="chip">⛓️ federada</span>` : ""}
       <span class="chip">${c.membros} pessoas</span>
       ${c.amigos?.length ? `<span class="amigos">· ${c.amigos.length} amigo${c.amigos.length > 1 ? "s" : ""} aqui</span>` : ""}
       <p class="muted" style="margin-top:4px">${esc(c.desc)}</p>
