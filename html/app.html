@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Conversa — Comunidades</title>
 <link rel="icon" type="image/svg+xml" href="icons/conversa.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+#mapa { height: 340px; border-radius: 14px; border: 1px solid #dcd3c2; z-index: 1; }
+.card-evento { background: #ffffff; border: 1px solid #dcd3c2; border-radius: 14px; padding: 12px 14px; margin: 8px 0; }
+.card-evento b { font-size: 0.98rem; }
+.card-evento .meta { color: #635849; font-size: 0.8rem; margin-top: 2px; }
+.leaflet-container { font-family: inherit; }
+</style>
 <style>
 :root { color-scheme: light; }
 * { box-sizing: border-box; margin: 0; }
