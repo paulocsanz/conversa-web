@@ -31,7 +31,7 @@ jobs:
           node -e '
           const fs = require("fs");
           const html = fs.readFileSync("html/home.html", "utf8");
-          const refs = [...html.matchAll(/(?:src|href)="(\/[^"]+)"/g)].map(m => m[1].split("?")[0]);
+          const refs = [...html.matchAll(/(?:src|href)="(\/[^"$]+)"/g)].map(m => m[1].split("?")[0]);
           let falhou = 0;
           for (const r of refs) if (!fs.existsSync("html" + r)) { console.error("faltando:", r); falhou++; }
           process.exit(falhou ? 1 : 0);'
