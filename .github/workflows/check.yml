@@ -1,0 +1,37 @@
+name: check
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  sintaxe-e-ativos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: sintaxe dos módulos inline (home.html, marketplace.html)
+        run: |
+          node -e '
+          const fs = require("fs");
+          let falhou = 0;
+          for (const f of ["html/home.html", "html/marketplace.html"]) {
+            const html = fs.readFileSync(f, "utf8");
+            const m = html.match(/<script type="module">([\s\S]*?)<\/script>/g) || [];
+            for (const bloco of m) {
+              const code = bloco.replace(/<script type="module">/, "").replace(/<\/script>/, "")
+                .replace(/^\s*import\s.+;?\s*$/gm, "// import");
+              try { new Function(code); } catch (e) { console.error(f, "ERRO:", e.message); falhou++; }
+            }
+          }
+          process.exit(falhou ? 1 : 0);'
+      - name: ativos referenciados existem
+        run: |
+          node -e '
+          const fs = require("fs");
+          const html = fs.readFileSync("html/home.html", "utf8");
+          const refs = [...html.matchAll(/(?:src|href)="(\/[^"]+)"/g)].map(m => m[1].split("?")[0]);
+          let falhou = 0;
+          for (const r of refs) if (!fs.existsSync("html" + r)) { console.error("faltando:", r); falhou++; }
+          process.exit(falhou ? 1 : 0);'
