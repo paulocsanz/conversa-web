@@ -90,7 +90,7 @@ a { color: #96412b; }
   display: flex; gap: 10px; align-items: center; justify-content: space-between;
 }
 .banner-rec button { background: none; border: 0; color: #635849; font-size: 1rem; cursor: pointer; padding: 2px 6px; }
-#esperando { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); max-width: 460px; z-index: 40; }
+#esperando { position: fixed; top: 42%; left: 50%; transform: translate(-50%, -50%); max-width: 420px; z-index: 60; }
 </style>
 </head>
 <body>
@@ -146,11 +146,10 @@ a { color: #96412b; }
   </div>
 
   <div id="esperando" class="card">
-    <b>Entrar no Conversa</b>
-    <p class="muted">Um login só — vale para o chat e para as comunidades.</p>
-    <label>Usuário</label><input id="user" autocomplete="username">
-    <label>Senha</label><input id="pass" type="password" autocomplete="current-password">
-    <button onclick="entrar()">Entrar</button>
+    <b>Falta só entrar no chat 💬</b>
+    <p class="muted">O formulário de login está na aba Conversas. Quando você entrar,
+    as comunidades ativam aqui sozinhas — e nunca mais pedem nada.</p>
+    <button class="sec" onclick="mostrar('chat')">ir para o chat</button>
     <div id="msg" class="muted"></div>
   </div>
 </main>
@@ -506,11 +505,6 @@ async function boot() {
     $("esperando").style.display = "block";
   }
 }
-function ativaCom(sess) {
-  BASE = sess.hs; accessToken = sess.tok; meuUserId = sess.uid;
-  $("eu").textContent = meuUserId.split(":")[0];
-  iniciar().catch((e) => console.warn("carregar comunidades:", e.message));
-}
 function carregarChat(hash) {
   const f = $("chat");
   const alvo = "index.html" + (hash || "");
@@ -523,54 +517,20 @@ function carregarChat(hash) {
   }
   mostrar("chat");
 }
-async function loginApi(user, pass) {
-  const r = await fetch(`${BASE}/_matrix/client/v3/login`, { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "m.login.password", identifier: { type: "m.id.user", user }, password: pass, device_id: "SHELL-" + Math.random().toString(36).slice(2, 6).toUpperCase() }) });
-  const j = await r.json();
-  if (!j.access_token) throw new Error(j.errcode || "login recusado");
-  return j;
+// ── boot: sem sessão, o chat nativo é o login; o painel lê e ativa sozinho ──
+async function boot() {
+  const sess = await lerSessaoDoApp();
+  if (sess) {
+    ativaCom(sess);
+    mostrar("chat");
+    return;
+  }
+  $("esperando").style.display = "block";
+  const poll = setInterval(async () => {
+    const s = await lerSessaoDoApp();
+    if (s) { clearInterval(poll); ativaCom(s); mostrar("chat"); }
+  }, 2000);
 }
-function limparEstadoVelho() {
-  // remove sessões antigas do app para o boot não tentar restaurar algo quebrado
-  Object.keys(localStorage).filter(k => k.startsWith("mx_")).forEach(k => localStorage.removeItem(k));
-  ["matrix-react-sdk", "matrix-sdk-crypto", "matrix-sdk-crypto2"].forEach(nome => {
-    try { indexedDB.deleteDatabase(nome); } catch (e) {}
-  });
-}
-function injetarSessaoNoApp(tok, uid) {
-  localStorage.setItem("mx_hs_url", BASE);
-  localStorage.setItem("mx_user_id", uid);
-  localStorage.setItem("mx_access_token", tok);
-  localStorage.setItem("mx_device_id", "SHELL");
-  localStorage.setItem("mx_has_access_token", "true");
-  localStorage.setItem("mx_is_guest", "false");
-}
-window.entrar = async function () {
-  const user = $("user").value.trim(), pass = $("pass").value;
-  if (!user || !pass) { $("msg").textContent = "preencha usuário e senha"; return; }
-  $("msg").textContent = "entrando…";
-  try {
-    let j;
-    try { j = await loginApi(user, pass); }
-    catch (eSenha) {
-      const n = await (await fetch(`${BASE}/_synapse/admin/v1/register`)).json();
-      const enc = new TextEncoder();
-      const key = await crypto.subtle.importKey("raw", enc.encode("eaf68ebd8a0c3880c7eaee6b5a55911c12bf934c90e327d0"), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
-      const macBuf = await crypto.subtle.sign("HMAC", key, enc.encode(`${n}\0${user}\0${pass}\0notadmin`));
-      const mac = [...new Uint8Array(macBuf)].map(b => b.toString(16).padStart(2, "0")).join("");
-      const r2 = await (await fetch(`${BASE}/_synapse/admin/v1/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nonce: n, username: user, password: pass, admin: false, mac }) })).json();
-      if (!r2.access_token) throw eSenha;
-      j = r2;
-    }
-    limparEstadoVelho();                       // sem estado velho não há erro de restauração
-    injetarSessaoNoApp(j.access_token, j.user_id);
-    accessToken = j.access_token; meuUserId = j.user_id;
-    $("esperando").style.display = "none";
-    $("eu").textContent = meuUserId.split(":")[0];
-    iniciar().catch((e) => console.warn("comunidades:", e.message));
-    carregarChat();                            // o chat boota logado com a sessão injetada
-  } catch (e) { $("msg").textContent = "falhou: " + e.message; }
-};
 boot();
 </script>
 </body>
