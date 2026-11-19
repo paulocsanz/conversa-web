@@ -123,6 +123,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<"
 const FLAG = (n) => new URLSearchParams(location.search).has(n);
 const FLAG_DEDUP = FLAG("flag_viz_feed_dedup");
 const FLAG_DEEPLINK = FLAG("flag_viz_deeplink");
+const FLAG_ONBOARDING = FLAG("flag_onboarding_chaves");
 const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 const LUGARES = [
@@ -263,12 +264,14 @@ async function iniciar() {
   try {
     await api(`/_matrix/client/v3/user/${encodeURIComponent(meuUserId)}/account_data/m.secret_storage.default_key`);
   } catch (e) {
-    const banner = document.createElement("div");
-    banner.className = "card";
-    banner.innerHTML = `🔐 <b>Configure sua recuperação</b> (1 minuto): protege suas conversas para quando trocar de aparelho ou perder o acesso.
-      <button class="sec" onclick="abrirChat('#/user/settings/security')">Abrir configuração de segurança →</button>
-      <div class="muted">A frase que o app gerar é a SUA chave — guarde num lugar seguro. Você só precisa dela se perder o acesso.</div>`;
-    $("viz").prepend(banner);
+    if (FLAG_ONBOARDING) {
+      const banner = document.createElement("div");
+      banner.className = "card";
+      banner.innerHTML = `🔐 <b>Configure sua recuperação</b> (1 minuto): protege suas conversas para quando trocar de aparelho ou perder o acesso.
+        <button class="sec" onclick="abrirChat('#/user/settings/security')">Abrir configuração de segurança →</button>
+        <div class="muted">A frase que o app gerar é a SUA chave — guarde num lugar seguro. Você só precisa dela se perder o acesso.</div>`;
+      $("viz").prepend(banner);
+    }
   }
 
   renderGrafo(); renderLista(); renderFeed(); renderLugares();
